@@ -137,5 +137,5 @@ with gr.Blocks() as app:
         make_tab("English")
 
 if __name__ == "__main__":
-    app.launch()
+    app.launch(share=True)
 

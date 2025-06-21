@@ -4,20 +4,43 @@ from transformers import pipeline
 # Load the Hugging Face pipeline for text classification
 # Replace "dmis-lab/biobert-base-cased-v1.1" with a fine-tuned model if needed
 text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
+# 定义标签映射
+LABEL_MAPPING = {
+    "LABEL_0": "低风险 / Low Risk",
+    "LABEL_1": "中风险 / Moderate Risk",
+    "LABEL_2": "高风险 / High Risk"
+}
 
-# Analyze free text using Hugging Face
+# 使用 Hugging Face 模型分析自由文本
 def analyze_free_text(free_text):
     if not free_text.strip():
         return "无额外信息 / No additional information provided."
     
     try:
-        # Use Hugging Face model to analyze free text
+        # 使用 Hugging Face 模型分析自由文本
         results = text_analysis_pipeline(free_text)
-        # Format analysis results
-        analysis = "\n".join([f"{label['label']}: {label['score']:.2f}" for label in results])
+        
+        # 转换标签为文字描述
+        analysis = "\n".join([
+            f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
+            for label in results
+        ])
         return f"分析结果 / Analysis Results:\n{analysis}"
     except Exception as e:
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
+    
+def detect_conflicts(structured_result, huggingface_analysis):
+    """
+    检测结构化问题的结果和自由输入文字的分析结果是否存在冲突。
+    """
+    # 示例逻辑：如果结构化问题的结果是低风险，但自由文本分析显示高风险，则认为存在冲突
+    if "低风险" in structured_result and "高风险" in huggingface_analysis:
+        return True
+    if "高风险" in structured_result and "低风险" in huggingface_analysis:
+        return True
+
+    # 如果没有检测到冲突
+    return False
 
 # Assess structured questions and combine with free text analysis
 def assess_with_huggingface(lang, *inputs):
@@ -31,13 +54,24 @@ def assess_with_huggingface(lang, *inputs):
     # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
 
+    # Detect conflicts
+    conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
+
     # Combine results
     combined_result = (
         f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
         f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
-        f"### 综合评估 / Combined Assessment:\n"
-        f"综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
     )
+
+    if conflict_detected:
+        combined_result += (
+            "⚠️ 检测到冲突 / Conflict Detected:\n"
+            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
+        )
+
+    combined_result += "### 综合评估 / Combined Assessment:\n"
+    combined_result += "综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
+
     return combined_result
 
 # Example structured question assessment function

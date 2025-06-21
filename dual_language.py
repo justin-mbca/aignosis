@@ -1,5 +1,6 @@
 import gradio as gr
 from datetime import datetime
+from llm_analysis import analyze_cardiovascular_text
 
 # 双语模板
 content = {
@@ -76,76 +77,100 @@ def enforce_word_limit(text):
     return text
 
 # 推理函数
+# def assess(lang, *answers):
+#     print(f"[LOG] answers: {answers}")
+#     L = content[lang]
+#     yn = L["yes"]
+#     p = [a == yn for a in answers[:16]]
+#     bp, glu, ldl = answers[16], answers[17], answers[18]
+#     reasons = []
+#     score = sum(p)
+#     if bp and bp >= 140:
+#         score += 1; reasons.append("血压偏高" if lang == "中文" else "High BP")
+#     if glu and glu >= 7.0:
+#         score += 1; reasons.append("血糖偏高" if lang == "中文" else "High Glucose")
+#     if ldl and ldl >= 3.4:
+#         score += 1; reasons.append("LDL偏高" if lang == "中文" else "High LDL")
+#     print(f"Score: {score}, Reasons: {reasons}")
+#     r = L["results"]
+#     if score >= 9: level, advice = r["high"], r["advice_h"]
+#     elif score >= 5: level, advice = r["mid"], r["advice_m"]
+#     else: level, advice = r["low"], r["advice_l"]
+
+#     # 疾病判断
+#     if p[0] and p[1] and p[4] and not p[3] and not p[5]:
+#         d = "Stable Angina" if lang == "English" else "稳定型心绞痛"
+#         reasons.append("Effort + rest relief" if lang == "English" else "劳力性胸痛，休息缓解")
+#     elif p[2] and p[3] and p[5]:
+#         d = "Acute Myocardial Infarction" if lang == "English" else "急性心肌梗死"
+#         reasons.append("Persistent + radiation + sweat" if lang == "English" else "持续胸痛 + 放射痛 + 冷汗")
+#     elif p[6] and (p[7] or p[8]):
+#         d = "Heart Failure" if lang == "English" else "心力衰竭"
+#         reasons.append("Dyspnea + dizziness" if lang == "English" else "呼吸困难 + 头晕")
+#     elif p[9] and p[8]:
+#         d = "Arrhythmia" if lang == "English" else "心律失常"
+#         reasons.append("Palpitations + fainting" if lang == "English" else "心悸 + 晕厥")
+#     else:
+#         d = "Atypical Chest Pain" if lang == "English" else "非典型胸痛"
+#         reasons.append("Non-specific symptoms" if lang ==
+#                        "English" else "症状不典型")
+
+#     freetext = answers[-1]
+#     print(f"[LOG] Input Free Text ({lang}): {freetext}")
+#     print(f"[LOG] Score before free text: {score}")
+#     if freetext:
+#         keywords_en = ["pain", "sweat", "dizzy", "palpitation", "vomit"]
+#         keywords_zh = ["疼痛", "出汗", "头晕", "心悸", "呕吐"]
+#         found = []
+#         if lang == "English":
+#             for kw in keywords_en:
+#                 if kw in freetext.lower():
+#                     found.append(kw)
+#             if found:
+#                 score += 1
+#                 reasons.append(f"Free text mentions: {', '.join(found)}")
+#         else:
+#             for kw in keywords_zh:
+#                 if kw in freetext:
+#                     found.append(kw)
+#                     score += 1
+#     print(f"[LOG] Score after free text: {score}")
+#     print(f"[LOG] Reasoning ({lang}): {reasons}")
+#     result = L["report"].format(
+#         datetime.now().strftime("%Y-%m-%d %H:%M"),
+#         level, advice, d,
+#         ", ".join(reasons) if lang == "English" else "，".join(reasons),
+#         L["diseases"][d]
+#     )
+
+#     # Log the output result
+#     print(f"[LOG] Output Result ({lang}): {result}")
+
+#     return result
+
+
+
+
 def assess(lang, *answers):
-    print(f"[LOG] answers: {answers}")
     L = content[lang]
-    yn = L["yes"]
-    p = [a == yn for a in answers[:16]]
-    bp, glu, ldl = answers[16], answers[17], answers[18]
-    reasons = []
-    score = sum(p)
-    if bp and bp >= 140:
-        score += 1; reasons.append("血压偏高" if lang == "中文" else "High BP")
-    if glu and glu >= 7.0:
-        score += 1; reasons.append("血糖偏高" if lang == "中文" else "High Glucose")
-    if ldl and ldl >= 3.4:
-        score += 1; reasons.append("LDL偏高" if lang == "中文" else "High LDL")
-    print(f"Score: {score}, Reasons: {reasons}")
-    r = L["results"]
-    if score >= 9: level, advice = r["high"], r["advice_h"]
-    elif score >= 5: level, advice = r["mid"], r["advice_m"]
-    else: level, advice = r["low"], r["advice_l"]
-
-    # 疾病判断
-    if p[0] and p[1] and p[4] and not p[3] and not p[5]:
-        d = "Stable Angina" if lang == "English" else "稳定型心绞痛"
-        reasons.append("Effort + rest relief" if lang == "English" else "劳力性胸痛，休息缓解")
-    elif p[2] and p[3] and p[5]:
-        d = "Acute Myocardial Infarction" if lang == "English" else "急性心肌梗死"
-        reasons.append("Persistent + radiation + sweat" if lang == "English" else "持续胸痛 + 放射痛 + 冷汗")
-    elif p[6] and (p[7] or p[8]):
-        d = "Heart Failure" if lang == "English" else "心力衰竭"
-        reasons.append("Dyspnea + dizziness" if lang == "English" else "呼吸困难 + 头晕")
-    elif p[9] and p[8]:
-        d = "Arrhythmia" if lang == "English" else "心律失常"
-        reasons.append("Palpitations + fainting" if lang == "English" else "心悸 + 晕厥")
-    else:
-        d = "Atypical Chest Pain" if lang == "English" else "非典型胸痛"
-        reasons.append("Non-specific symptoms" if lang ==
-                       "English" else "症状不典型")
-
     freetext = answers[-1]
-    print(f"[LOG] Input Free Text ({lang}): {freetext}")
-    print(f"[LOG] Score before free text: {score}")
-    if freetext:
-        keywords_en = ["pain", "sweat", "dizzy", "palpitation", "vomit"]
-        keywords_zh = ["疼痛", "出汗", "头晕", "心悸", "呕吐"]
-        found = []
-        if lang == "English":
-            for kw in keywords_en:
-                if kw in freetext.lower():
-                    found.append(kw)
-            if found:
-                score += 1
-                reasons.append(f"Free text mentions: {', '.join(found)}")
-        else:
-            for kw in keywords_zh:
-                if kw in freetext:
-                    found.append(kw)
-                    score += 1
-    print(f"[LOG] Score after free text: {score}")
-    print(f"[LOG] Reasoning ({lang}): {reasons}")
-    result = L["report"].format(
-        datetime.now().strftime("%Y-%m-%d %H:%M"),
-        level, advice, d,
-        ", ".join(reasons) if lang == "English" else "，".join(reasons),
-        L["diseases"][d]
-    )
+    llm_result = ""
+    if freetext and freetext.strip():
+        print(f"[LOG] Input Free Text ({lang}): {freetext[:100]}...")
+        llm_result = analyze_cardiovascular_text(freetext, lang)
+        print(f"[LOG] LLM Analysis ({lang}): {llm_result}")
+    else:
+        llm_result = "No free text provided." if lang == "English" else "未提供自由文本。"
 
-    # Log the output result
+    # Output only the LLM analysis (with timestamp)
+    if lang == "English":
+        result = f"📝 Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\nLLM Cardiovascular Analysis:\n{llm_result}"
+    else:
+        result = f"📝 时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}\n\nLLM心血管分析：\n{llm_result}"
+
     print(f"[LOG] Output Result ({lang}): {result}")
-
     return result
+    # TODo: Add questions to the LLM analysis rather than yes or no answers
 
 # 构建标签页
 def make_tab(lang):

@@ -142,7 +142,7 @@ def make_tab(lang):
                 ""                             # Reset the output field
             ),
             inputs=None,
-            outputs=fields + [output]  # Reset all inputs and the output
+            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]  # Reset all inputs and the output
         )
 # Launch Gradio app
 if __name__ == "__main__":

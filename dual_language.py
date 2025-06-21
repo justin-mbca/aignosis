@@ -40,7 +40,7 @@ def detect_conflicts(structured_result, huggingface_analysis):
         return True
 
     # 如果没有检测到冲突
-    return False
+    return False    最近一周经常感到胸闷，尤其是在爬楼梯时。持续时间大约5分钟，休息后会缓解。家族中父亲有冠心病史。
 
 # Assess structured questions and combine with free text analysis
 def assess_with_huggingface(lang, *inputs):
@@ -123,10 +123,22 @@ def make_tab(lang):
 
         # Output and submit button
         output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result")
-        gr.Button("提交评估 / Submit").click(
-            fn=assess_with_huggingface,  # Correct function name
+        submit_button = gr.Button("提交评估 / Submit")
+        reset_button = gr.Button("重置 / Reset")  # Add reset button
+
+        # Submit button functionality
+        submit_button.click(
+            fn=assess_with_huggingface,  # Function to process inputs
             inputs=[gr.State(lang)] + fields,
             outputs=output
+        )
+
+        # Reset button functionality
+        reset_button.click(
+            fn=None,  # No function needed
+            inputs=None,
+            outputs=fields + [output],  # Clear all inputs and output
+            _js="() => location.reload()"  # Optional: reload the page for a full reset
         )
 
 # Launch Gradio app

@@ -1,4 +1,3 @@
 gradio
-openai==0.28
 transformers
 torch

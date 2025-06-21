@@ -218,12 +218,11 @@ def make_tab(lang):
             outputs=output
         )
 
-        # 启动 Gradio 应用
-        with gr.Blocks() as app:
-            gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
-            with gr.Tabs():
-                make_tab("中文")
-                make_tab("English")
-
+ # 启动 Gradio 应用
 if __name__ == "__main__":
-    app.launch(share=True)
+    with gr.Blocks() as app:
+        gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
+        with gr.Tabs():
+            make_tab("中文")
+            make_tab("English")
+        app.launch(share=True)  # Move the launch call inside the context

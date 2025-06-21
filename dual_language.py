@@ -140,21 +140,30 @@ def make_tab(lang):
 
         # 症状分组
         gr.Markdown("### 症状 / Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptoms]
+        with gr.Row():
+            with gr.Column():
+                symptom_fields_col1 = [gr.Radio(choices=yesno, label=q) for q in symptoms[:5]]
+            with gr.Column():
+                symptom_fields_col2 = [gr.Radio(choices=yesno, label=q) for q in symptoms[5:]]
 
         # 病史分组
         gr.Markdown("### 病史 / Medical History")
-        history_fields = [gr.Radio(choices=yesno, label=q) for q in medical_history]
+        with gr.Row():
+            with gr.Column():
+                history_fields_col1 = [gr.Radio(choices=yesno, label=q) for q in medical_history[:3]]
+            with gr.Column():
+                history_fields_col2 = [gr.Radio(choices=yesno, label=q) for q in medical_history[3:]]
 
         # 实验室参数分组
         gr.Markdown("### 实验室参数 / Lab Parameters")
-        lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-            for q, minv, maxv, val in L["nums"]
-        ]
+        with gr.Row():
+            lab_fields = [
+                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+                for q, minv, maxv, val in L["nums"]
+            ]
 
         # 合并所有字段
-        fields = symptom_fields + history_fields + lab_fields
+        fields = symptom_fields_col1 + symptom_fields_col2 + history_fields_col1 + history_fields_col2 + lab_fields
 
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")

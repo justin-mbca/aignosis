@@ -40,7 +40,7 @@ def detect_conflicts(structured_result, huggingface_analysis):
         return True
 
     # 如果没有检测到冲突
-    return False    最近一周经常感到胸闷，尤其是在爬楼梯时。持续时间大约5分钟，休息后会缓解。家族中父亲有冠心病史。
+    return False    #最近一周经常感到胸闷，尤其是在爬楼梯时。持续时间大约5分钟，休息后会缓解。家族中父亲有冠心病史。
 
 # Assess structured questions and combine with free text analysis
 def assess_with_huggingface(lang, *inputs):

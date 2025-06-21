@@ -134,9 +134,15 @@ def make_tab(lang):
 
         # Reset button functionality
         reset_button.click(
-            fn=lambda: ([""] * len(fields), ""),  # Clear all inputs and output
+            fn=lambda: (
+                [None] * len(symptom_fields) +  # Reset all Radio fields
+                [None] * len(history_fields) +  # Reset all Radio fields
+                [None] * len(lab_fields) +      # Reset all Number fields
+                [""],                          # Reset the free text field
+                ""                             # Reset the output field
+            ),
             inputs=None,
-            outputs=fields + [output]
+            outputs=fields + [output]  # Reset all inputs and the output
         )
 # Launch Gradio app
 if __name__ == "__main__":

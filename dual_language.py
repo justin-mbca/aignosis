@@ -172,14 +172,12 @@ def make_tab(lang):
         ]]
         gr.HTML('</div>')
 
-        # 实验室参数分组
+      # 实验室参数分组
         gr.Markdown("### 实验室参数 / Lab Parameters")
-        gr.HTML('<div class="grid-container">')
         lab_fields = [
             gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
             for q, minv, maxv, val in L["nums"]
         ]
-        gr.HTML('</div>')
 
         # 合并所有字段
         fields = symptom_fields + history_fields + lab_fields
@@ -198,7 +196,7 @@ def make_tab(lang):
         # Wrap all fields in a grid container
         gr.HTML('<div class="grid-container">')
         for field in fields:
-            field.render()
+            field  # Do not call `render()`; just include the field in the layout
         gr.HTML('</div>')
 
         # 输出和提交按钮

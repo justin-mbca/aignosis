@@ -127,28 +127,13 @@ def make_tab(lang):
         gr.Markdown(f"### {L['title']}")
         gr.Markdown(L["desc"])
 
-        # Add custom CSS for responsive grid layout
+        # Add custom CSS for fixed 4-column layout
         gr.HTML("""
         <style>
             .grid-container {
                 display: grid;
+                grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
                 gap: 16px;
-            }
-            /* Default: 2 columns */
-            .grid-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            /* Medium screens: 3 columns */
-            @media (min-width: 768px) {
-                .grid-container {
-                    grid-template-columns: repeat(3, 1fr);
-                }
-            }
-            /* Large screens: 4 columns */
-            @media (min-width: 1200px) {
-                .grid-container {
-                    grid-template-columns: repeat(4, 1fr);
-                }
             }
         </style>
         """)
@@ -161,6 +146,8 @@ def make_tab(lang):
             "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
             "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
         ]]
+        for field in symptom_fields:
+            field.render()
         gr.HTML('</div>')
 
         # 病史分组
@@ -170,45 +157,23 @@ def make_tab(lang):
             "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
             "是否有心脏病家族史？", "近期是否有情绪压力？"
         ]]
+        for field in history_fields:
+            field.render()
         gr.HTML('</div>')
 
-      # 实验室参数分组
+        # 实验室参数分组
         gr.Markdown("### 实验室参数 / Lab Parameters")
+        gr.HTML('<div class="grid-container">')
         lab_fields = [
             gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
             for q, minv, maxv, val in L["nums"]
         ]
+        for field in lab_fields:
+            field.render()
+        gr.HTML('</div>')
 
         # 合并所有字段
         fields = symptom_fields + history_fields + lab_fields
-
-        # Add custom CSS for fixed 4-column layout
-        gr.HTML("""
-        <style>
-            .grid-container {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
-                gap: 16px;
-            }
-        </style>
-        """)
-        # Add custom CSS for fixed 4-column layout
-        gr.HTML("""
-        <style>
-            .grid-container {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
-                gap: 16px;
-            }
-        </style>
-        """)
-
-        # Wrap all fields in a grid container
-        with gr.Row():
-            with gr.HTML('<div class="grid-container">'):
-                for field in fields:
-                    field  # Add each field to the grid container
-            gr.HTML('</div>')
 
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")
@@ -218,11 +183,11 @@ def make_tab(lang):
             outputs=output
         )
 
- # 启动 Gradio 应用
+# 启动 Gradio 应用
 if __name__ == "__main__":
     with gr.Blocks() as app:
         gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
         with gr.Tabs():
             make_tab("中文")
             make_tab("English")
-        app.launch(share=True)  # Move the launch call inside the context
+        app.launch(share=True)

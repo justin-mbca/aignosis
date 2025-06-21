@@ -85,7 +85,6 @@ def assess(lang, *inputs):
     else:
         return "🟢 低风险 / Low Risk"
 
-# Build Gradio interface
 def make_tab(lang):
     L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
     yesno = [L["yes"], L["no"]]
@@ -135,12 +134,10 @@ def make_tab(lang):
 
         # Reset button functionality
         reset_button.click(
-            fn=None,  # No function needed
+            fn=lambda: ([""] * len(fields), ""),  # Clear all inputs and output
             inputs=None,
-            outputs=fields + [output],  # Clear all inputs and output
-            _js="() => location.reload()"  # Optional: reload the page for a full reset
+            outputs=fields + [output]
         )
-
 # Launch Gradio app
 if __name__ == "__main__":
     with gr.Blocks() as app:

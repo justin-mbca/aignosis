@@ -1,46 +1,25 @@
 import openai  # 确保已安装 openai 库
 import gradio as gr
+from transformers import pipeline
 
-# 使用 LLM 分析自由文本并结合结构化问题
-def assess_with_llm(lang, *inputs):
-    # 分离结构化输入和自由文本
-    structured_inputs = inputs[:-1]
-    free_text_input = inputs[-1]
+# 加载 Hugging Face 模型管道
+# 使用 BioBERT 模型进行文本分类
+text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
 
-    # 调用 assess 函数处理结构化输入
-    structured_result = assess(lang, *structured_inputs)
-
-    # 调用 LLM 分析自由文本
-    llm_analysis = analyze_free_text(free_text_input)
-
-    # 综合结果
-    combined_result = (
-        f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
-        f"### 来自自由文字判断 / Based on Free Text Input:\n{llm_analysis}\n\n"
-        f"### 综合评估 / Combined Assessment:\n"
-        f"综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
-    )
-    return combined_result
-
-# 调用 LLM 分析自由文本
+# 调用 Hugging Face 模型分析自由文本
 def analyze_free_text(free_text):
     if not free_text.strip():
         return "无额外信息 / No additional information provided."
     
-    # 调用 OpenAI GPT API 分析自由文本
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # 使用最新的 ChatGPT 模型
-            messages=[
-                {"role": "system", "content": "你是一个心血管健康助手，请分析用户提供的信息并提取与心血管健康相关的内容。"},
-                {"role": "user", "content": free_text}
-            ],
-            max_tokens=150,
-            temperature=0.7
-        )
-        return response['choices'][0]['message']['content'].strip()
+        # 使用 Hugging Face 模型分析自由文本
+        results = text_analysis_pipeline(free_text)
+        # 格式化分析结果
+        analysis = "\n".join([f"{label['label']}: {label['score']:.2f}" for label in results])
+        return f"分析结果 / Analysis Results:\n{analysis}"
     except Exception as e:
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
+
 # 示例结构化问题评估函数
 def assess(lang, *inputs):
     # 示例逻辑：根据结构化问题计算风险等级

@@ -17,8 +17,9 @@ content = {
         "nums": [
             ("收缩压 (60–220 mmHg，可选)", 60, 220, 120),
             ("空腹血糖 (2.0–20.0 mmol/L)", 2.0, 20.0, 5.5),
-            ("LDL胆固醇 (1.0–7.0 mmol/L，可选)", 1.0, 7.0, 2.8)
-
+            ("LDL胆固醇 (1.0–7.0 mmol/L，可选)", 1.0, 7.0, 2.8),
+            ("肌钙蛋白 (Troponin, ng/mL)", 0.0, 50.0, 0.01),
+            ("肌酸激酶同工酶 (CK-MB, ng/mL)", 0.0, 50.0, 1.0)
         ],
         "results": {
             "high": "🔴 高风险", "mid": "🟠 中风险", "low": "🟢 低风险",
@@ -49,7 +50,9 @@ content = {
         "nums": [
             ("Systolic BP (mmHg, optional)", 60, 220, 120),
             ("Fasting Glucose (mmol/L)", 2.0, 20.0, 5.5),
-            ("LDL Cholesterol (mmol/L, optional)", 1.0, 7.0, 2.8)
+            ("LDL Cholesterol (mmol/L, optional)", 1.0, 7.0, 2.8),
+            ("Troponin (ng/mL)", 0.0, 50.0, 0.01),
+            ("CK-MB (ng/mL)", 0.0, 50.0, 1.0)
         ],
         "results": {
             "high": "🔴 High Risk", "mid": "🟠 Moderate Risk", "low": "🟢 Low Risk",
@@ -73,7 +76,7 @@ def assess(lang, *answers):
     L = content[lang]
     yn = L["yes"]
     p = [a == yn for a in answers[:16]]
-    bp, glu, ldl = answers[16], answers[17], answers[18]
+    bp, glu, ldl, troponin, ck_mb = answers[16], answers[17], answers[18], answers[19], answers[20]
     reasons = []
     score = sum(p)
     if bp and bp >= 140:
@@ -82,6 +85,10 @@ def assess(lang, *answers):
         score += 1; reasons.append("血糖偏高" if lang == "中文" else "High Glucose")
     if ldl and ldl >= 3.4:
         score += 1; reasons.append("LDL偏高" if lang == "中文" else "High LDL")
+    if troponin and troponin > 0.04:
+        score += 2; reasons.append("肌钙蛋白升高" if lang == "中文" else "Elevated Troponin")
+    if ck_mb and ck_mb > 5.0:
+        score += 2; reasons.append("肌酸激酶同工酶升高" if lang == "中文" else "Elevated CK-MB")
 
     r = L["results"]
     if score >= 9: level, advice = r["high"], r["advice_h"]
@@ -138,4 +145,3 @@ with gr.Blocks() as app:
 
 if __name__ == "__main__":
     app.launch(share=True)
-

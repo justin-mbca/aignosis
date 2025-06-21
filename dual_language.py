@@ -192,12 +192,23 @@ def make_tab(lang):
             }
         </style>
         """)
+        # Add custom CSS for fixed 4-column layout
+        gr.HTML("""
+        <style>
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
+                gap: 16px;
+            }
+        </style>
+        """)
 
-      # Wrap all fields in a grid container
-        gr.HTML('<div class="grid-container">')
-        for field in fields:
-            field.render()  # Explicitly render each field inside the grid container
-        gr.HTML('</div>')
+        # Wrap all fields in a grid container
+        with gr.Row():
+            with gr.HTML('<div class="grid-container">'):
+                for field in fields:
+                    field  # Add each field to the grid container
+            gr.HTML('</div>')
 
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")
@@ -207,12 +218,12 @@ def make_tab(lang):
             outputs=output
         )
 
-# 启动 Gradio 应用
-with gr.Blocks() as app:
-    gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
-    with gr.Tabs():
-        make_tab("中文")
-        make_tab("English")
+        # 启动 Gradio 应用
+        with gr.Blocks() as app:
+            gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
+            with gr.Tabs():
+                make_tab("中文")
+                make_tab("English")
 
 if __name__ == "__main__":
     app.launch(share=True)

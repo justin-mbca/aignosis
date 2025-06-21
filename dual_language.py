@@ -29,16 +29,18 @@ def analyze_free_text(free_text):
     
     # 调用 OpenAI GPT API 分析自由文本
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",  # 替换为适当的模型引擎
-            prompt=f"请分析以下信息并提取与心血管健康相关的内容：\n\n{free_text}",
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # 使用最新的 ChatGPT 模型
+            messages=[
+                {"role": "system", "content": "你是一个心血管健康助手，请分析用户提供的信息并提取与心血管健康相关的内容。"},
+                {"role": "user", "content": free_text}
+            ],
             max_tokens=150,
             temperature=0.7
         )
-        return response.choices[0].text.strip()
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
-
 # 示例结构化问题评估函数
 def assess(lang, *inputs):
     # 示例逻辑：根据结构化问题计算风险等级

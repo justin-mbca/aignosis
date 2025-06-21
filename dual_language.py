@@ -127,17 +127,6 @@ def make_tab(lang):
         gr.Markdown(f"### {L['title']}")
         gr.Markdown(L["desc"])
 
-        # 分组问题
-        symptoms = [
-            "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
-            "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
-            "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
-        ]
-        medical_history = [
-            "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
-            "是否有心脏病家族史？", "近期是否有情绪压力？"
-        ]
-
         # Add custom CSS for responsive grid layout
         gr.HTML("""
         <style>
@@ -151,21 +140,31 @@ def make_tab(lang):
 
         # 症状分组
         gr.Markdown("### 症状 / Symptoms")
-        with gr.HTML('<div class="grid-container">'):
-            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptoms]
+        gr.HTML('<div class="grid-container">')
+        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
+            "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
+            "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
+        ]]
+        gr.HTML('</div>')
 
         # 病史分组
         gr.Markdown("### 病史 / Medical History")
-        with gr.HTML('<div class="grid-container">'):
-            history_fields = [gr.Radio(choices=yesno, label=q) for q in medical_history]
+        gr.HTML('<div class="grid-container">')
+        history_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
+            "是否有心脏病家族史？", "近期是否有情绪压力？"
+        ]]
+        gr.HTML('</div>')
 
         # 实验室参数分组
         gr.Markdown("### 实验室参数 / Lab Parameters")
-        with gr.HTML('<div class="grid-container">'):
-            lab_fields = [
-                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-                for q, minv, maxv, val in L["nums"]
-            ]
+        gr.HTML('<div class="grid-container">')
+        lab_fields = [
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            for q, minv, maxv, val in L["nums"]
+        ]
+        gr.HTML('</div>')
 
         # 合并所有字段
         fields = symptom_fields + history_fields + lab_fields

@@ -138,32 +138,37 @@ def make_tab(lang):
             "是否有心脏病家族史？", "近期是否有情绪压力？"
         ]
 
+        # Add custom CSS for responsive grid layout
+        gr.HTML("""
+        <style>
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 16px;
+            }
+        </style>
+        """)
+
         # 症状分组
         gr.Markdown("### 症状 / Symptoms")
-        with gr.Row():
-            with gr.Column():
-                symptom_fields_col1 = [gr.Radio(choices=yesno, label=q) for q in symptoms[:5]]
-            with gr.Column():
-                symptom_fields_col2 = [gr.Radio(choices=yesno, label=q) for q in symptoms[5:]]
+        with gr.HTML('<div class="grid-container">'):
+            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptoms]
 
         # 病史分组
         gr.Markdown("### 病史 / Medical History")
-        with gr.Row():
-            with gr.Column():
-                history_fields_col1 = [gr.Radio(choices=yesno, label=q) for q in medical_history[:3]]
-            with gr.Column():
-                history_fields_col2 = [gr.Radio(choices=yesno, label=q) for q in medical_history[3:]]
+        with gr.HTML('<div class="grid-container">'):
+            history_fields = [gr.Radio(choices=yesno, label=q) for q in medical_history]
 
         # 实验室参数分组
         gr.Markdown("### 实验室参数 / Lab Parameters")
-        with gr.Row():
+        with gr.HTML('<div class="grid-container">'):
             lab_fields = [
                 gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
                 for q, minv, maxv, val in L["nums"]
             ]
 
         # 合并所有字段
-        fields = symptom_fields_col1 + symptom_fields_col2 + history_fields_col1 + history_fields_col2 + lab_fields
+        fields = symptom_fields + history_fields + lab_fields
 
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")

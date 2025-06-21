@@ -68,8 +68,16 @@ content = {
     }
 }
 
+
+def enforce_word_limit(text):
+    words = text.strip().split()
+    if len(words) > 500:
+        return " ".join(words[:500])
+    return text
+
 # 推理函数
 def assess(lang, *answers):
+    print(f"[LOG] answers: {answers}")
     L = content[lang]
     yn = L["yes"]
     p = [a == yn for a in answers[:16]]
@@ -82,7 +90,7 @@ def assess(lang, *answers):
         score += 1; reasons.append("血糖偏高" if lang == "中文" else "High Glucose")
     if ldl and ldl >= 3.4:
         score += 1; reasons.append("LDL偏高" if lang == "中文" else "High LDL")
-
+    print(f"Score: {score}, Reasons: {reasons}")
     r = L["results"]
     if score >= 9: level, advice = r["high"], r["advice_h"]
     elif score >= 5: level, advice = r["mid"], r["advice_m"]
@@ -103,14 +111,41 @@ def assess(lang, *answers):
         reasons.append("Palpitations + fainting" if lang == "English" else "心悸 + 晕厥")
     else:
         d = "Atypical Chest Pain" if lang == "English" else "非典型胸痛"
-        reasons.append("Non-specific symptoms" if lang == "English" else "症状不典型")
+        reasons.append("Non-specific symptoms" if lang ==
+                       "English" else "症状不典型")
 
-    return L["report"].format(
+    freetext = answers[-1]
+    print(f"[LOG] Input Free Text ({lang}): {freetext}")
+    print(f"[LOG] Score before free text: {score}")
+    if freetext:
+        keywords_en = ["pain", "sweat", "dizzy", "palpitation", "vomit"]
+        keywords_zh = ["疼痛", "出汗", "头晕", "心悸", "呕吐"]
+        found = []
+        if lang == "English":
+            for kw in keywords_en:
+                if kw in freetext.lower():
+                    found.append(kw)
+            if found:
+                score += 1
+                reasons.append(f"Free text mentions: {', '.join(found)}")
+        else:
+            for kw in keywords_zh:
+                if kw in freetext:
+                    found.append(kw)
+                    score += 1
+    print(f"[LOG] Score after free text: {score}")
+    print(f"[LOG] Reasoning ({lang}): {reasons}")
+    result = L["report"].format(
         datetime.now().strftime("%Y-%m-%d %H:%M"),
         level, advice, d,
         ", ".join(reasons) if lang == "English" else "，".join(reasons),
         L["diseases"][d]
     )
+
+    # Log the output result
+    print(f"[LOG] Output Result ({lang}): {result}")
+
+    return result
 
 # 构建标签页
 def make_tab(lang):
@@ -119,13 +154,24 @@ def make_tab(lang):
     with gr.TabItem(lang):
         gr.Markdown(f"### {L['title']}")
         gr.Markdown(L["desc"])
+
         fields = [gr.Radio(choices=yesno, label=q) for q in L["inputs"]]
+        print(f'{lang} inputs: {len(fields)} questions')
         for q, minv, maxv, val in L["nums"]:
             fields.append(gr.Number(label=q, minimum=minv, maximum=maxv, value=val))
+
+        freetext = gr.Textbox(
+            label="Free Text" if lang == "English" else "自由文本",
+            lines=10,
+            placeholder="Enter up to 500 words..." if lang == "English" else "最多输入500个单词...",
+            elem_id=f"freetext_{lang}"
+        )
+
         output = gr.Textbox(label="🩺 结果 / Result")
         gr.Button("提交评估 / Submit").click(
             fn=assess,
-            inputs=[gr.State(lang)] + fields,
+            inputs=[gr.State(lang)] + fields +
+            [freetext],  # Add freetext to inputs
             outputs=output
         )
 

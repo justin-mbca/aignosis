@@ -184,6 +184,23 @@ def make_tab(lang):
         # 合并所有字段
         fields = symptom_fields + history_fields + lab_fields
 
+        # Add custom CSS for fixed 4-column layout
+        gr.HTML("""
+        <style>
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
+                gap: 16px;
+            }
+        </style>
+        """)
+
+        # Wrap all fields in a grid container
+        gr.HTML('<div class="grid-container">')
+        for field in fields:
+            field.render()
+        gr.HTML('</div>')
+
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")
         gr.Button("提交评估 / Submit").click(

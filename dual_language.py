@@ -1,5 +1,6 @@
 import gradio as gr
 from datetime import datetime
+import openai  # Ensure you have the OpenAI library installed
 
 # 双语模板
 content = {
@@ -175,6 +176,11 @@ def make_tab(lang):
         # 合并所有字段
         fields = symptom_fields + history_fields + lab_fields
 
+        # 添加自由文本输入
+        gr.Markdown("### 其他信息 / Additional Information")
+        free_text = gr.Textbox(label="📝 请提供其他相关信息 / Provide any additional relevant information")
+
+
         # 输出和提交按钮
         output = gr.Textbox(label="🩺 结果 / Result")
         gr.Button("提交评估 / Submit").click(
@@ -183,6 +189,39 @@ def make_tab(lang):
             outputs=output
         )
 
+# 使用 LLM 分析自由文本并结合结构化问题
+def assess_with_llm(lang, *inputs):
+    # 分离结构化输入和自由文本
+    structured_inputs = inputs[:-1]
+    free_text_input = inputs[-1]
+
+    # 调用 assess 函数处理结构化输入
+    structured_result = assess(lang, *structured_inputs)
+
+    # 调用 LLM 分析自由文本
+    llm_analysis = analyze_free_text(free_text_input)
+
+    # 合并结果
+    combined_result = f"{structured_result}\n\n### LLM 分析 / LLM Analysis:\n{llm_analysis}"
+    return combined_result
+
+# 调用 LLM 分析自由文本
+def analyze_free_text(free_text):
+    if not free_text.strip():
+        return "无额外信息 / No additional information provided."
+    
+    # 调用 OpenAI GPT API 分析自由文本
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",  # Replace with the appropriate engine
+            prompt=f"请分析以下信息并提取与心血管健康相关的内容：\n\n{free_text}",
+            max_tokens=150,
+            temperature=0.7
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
+    
 # 启动 Gradio 应用
 if __name__ == "__main__":
     with gr.Blocks() as app:

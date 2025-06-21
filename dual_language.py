@@ -193,10 +193,10 @@ def make_tab(lang):
         </style>
         """)
 
-        # Wrap all fields in a grid container
+      # Wrap all fields in a grid container
         gr.HTML('<div class="grid-container">')
         for field in fields:
-            field  # Do not call `render()`; just include the field in the layout
+            field.render()  # Explicitly render each field inside the grid container
         gr.HTML('</div>')
 
         # 输出和提交按钮

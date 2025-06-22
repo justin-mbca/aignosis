@@ -40,29 +40,40 @@ def detect_conflicts(structured_result, huggingface_analysis):
 def evaluate_cardiovascular_disease(symptoms, history, lab_params):
     diseases = []
 
+    print(f"Debug: Symptoms = {symptoms}")
+    print(f"Debug: History = {history}")
+    print(f"Debug: Lab Parameters = {lab_params}")
+
     # 高血压（Hypertension）
     if lab_params.get("Systolic BP", 0) > 140 or lab_params.get("Diastolic BP", 0) > 90:
         diseases.append("高血压 / Hypertension")
+        print("Debug: Detected 高血压 / Hypertension")
 
     # 冠心病（Coronary Artery Disease, CAD）
     if history.get("Family History of Heart Disease", False) or lab_params.get("LDL-C", 0) > 130:
         diseases.append("冠心病 / Coronary Artery Disease")
+        print("Debug: Detected 冠心病 / Coronary Artery Disease")
 
     # 心肌梗塞（Myocardial Infarction, MI）
     if symptoms.get("Chest Pain", False) and lab_params.get("Troponin I/T", 0) > 0.04:
         diseases.append("心肌梗塞 / Myocardial Infarction")
+        print("Debug: Detected 心肌梗塞 / Myocardial Infarction")
 
     # 高脂血症（Hyperlipidemia）
     if lab_params.get("Total Cholesterol", 0) > 200 or lab_params.get("LDL-C", 0) > 130:
         diseases.append("高脂血症 / Hyperlipidemia")
+        print("Debug: Detected 高脂血症 / Hyperlipidemia")
 
     # 心力衰竭（Heart Failure）
     if symptoms.get("Shortness of Breath", False) and lab_params.get("BNP", 0) > 100:
         diseases.append("心力衰竭 / Heart Failure")
+        print("Debug: Detected 心力衰竭 / Heart Failure")
 
     if not diseases:
         diseases.append("无明显心血管疾病风险 / No significant cardiovascular disease risk detected")
+        print("Debug: No diseases detected")
 
+    print(f"Debug: Final Detected Diseases = {diseases}")
     return diseases
 
 # 综合评估

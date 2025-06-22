@@ -248,7 +248,12 @@ def make_tab(lang):
         # Lab parameters group with default values
         gr.Markdown("### 实验室参数 / Lab Parameters")
         lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            gr.Number(
+                label=f"{q} ({minv}-{maxv})",
+                minimum=minv,
+                maximum=maxv,
+                value=val
+            )
             for q, minv, maxv, val in L["nums"]
         ]
 

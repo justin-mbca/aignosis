@@ -115,8 +115,16 @@ def assess_with_huggingface(lang, *inputs):
         "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
     }
 
+    # Debug: Print inputs for disease evaluation
+    print(f"Debug: Symptoms = {symptoms}")
+    print(f"Debug: History = {history}")
+    print(f"Debug: Lab Parameters = {lab_params}")
+
     # Evaluate diseases
     diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
+
+    # Debug: Print detected diseases
+    print(f"Debug: Detected Diseases = {diseases}")
 
     # Combine results
     combined_result = (
@@ -132,6 +140,9 @@ def assess_with_huggingface(lang, *inputs):
 
     combined_result += "### 疾病评估 / Disease Assessment:\n"
     combined_result += "\n".join(diseases)
+
+    # Debug: Print combined result
+    print(f"Debug: Combined Result = {combined_result}")
 
     return combined_result
 

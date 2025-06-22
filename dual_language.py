@@ -15,7 +15,7 @@ LABEL_MAPPING = {
 def analyze_free_text(free_text):
     if not free_text.strip():
         return "无额外信息 / No additional information provided."
-    
+
     try:
         results = text_analysis_pipeline(free_text)
         analysis = "\n".join([
@@ -50,8 +50,8 @@ def assess_with_huggingface(lang, *inputs):
 
     if conflict_detected:
         combined_result += (
-            "⚠️ 检测到冲突 / Conflict Detected:\n"
-            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
+            "\u26a0\ufe0f 检测到冲突 / Conflict Detected:\n"
+            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息\n\n"
         )
 
     combined_result += "### 综合评估 / Combined Assessment:\n"
@@ -61,11 +61,11 @@ def assess_with_huggingface(lang, *inputs):
 
 # Example structured question assessment function
 def assess(lang, *inputs):
-    risk_score = sum(1 for i in inputs if i == "是")  # Assume "是" indicates risk
+    risk_score = sum(1 for i in inputs if i == ("是" if lang == "中文" else "Yes"))
     if risk_score >= 5:
         return "🔴 高风险 / High Risk"
     elif risk_score >= 3:
-        return "🟠 中风险 / Moderate Risk"
+        return "�\dfe0 中风险 / Moderate Risk"
     else:
         return "🟢 低风险 / Low Risk"
 
@@ -73,104 +73,76 @@ def assess(lang, *inputs):
 def make_tab(lang):
     if lang == "中文":
         L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
-        yesno = [L["yes"], L["no"]]
-        with gr.TabItem(lang):
-            gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
-
-            # Symptom group
-            gr.Markdown("### 症状 / Symptoms")
-            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-                "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
-                "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
-                "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
-            ]]
-
-            # Medical history group
-            gr.Markdown("### 病史 / Medical History")
-            history_fields = [gr.Radio(choices=yesno, label=q) for q in [
-                "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
-                "是否有心脏病家族史？", "近期是否有情绪压力？"
-            ]]
-
-            # Lab parameters group
-            gr.Markdown("### 实验室参数 / Lab Parameters")
-            lab_fields = [
-                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-                for q, minv, maxv, val in L["nums"]
-            ]
-
-            # Free text input
-            gr.Markdown("### 其他信息 / Additional Information")
-            free_text = gr.Textbox(label="📝 请提供其他相关信息 / Provide any additional relevant information")
-
-    elif lang == "English":
+    else:
         L = {"yes": "Yes", "no": "No", "nums": [("Systolic BP (mmHg)", 60, 220, 120)]}
-        yesno = [L["yes"], L["no"]]
-        with gr.TabItem(lang):
-            gr.Markdown(f"### Cardiovascular Assessment System ({lang})")
 
-            # Symptom group
-            gr.Markdown("### Symptoms")
-            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-                "Does chest pain worsen with exertion?", "Is it a pressing or squeezing sensation?",
-                "Does it last longer than 5 minutes?", "Does it radiate to the shoulder/back/jaw?",
-                "Does it improve with rest?", "Is it accompanied by cold sweats?",
-                "Is there shortness of breath?", "Is there nausea or vomiting?",
-                "Is there dizziness or fainting?", "Is there heart palpitations?"
-            ]]
+    yesno = [L["yes"], L["no"]]
 
-            # Medical history group
-            gr.Markdown("### Medical History")
-            history_fields = [gr.Radio(choices=yesno, label=q) for q in [
-                "Do you have high blood pressure?", "Do you have diabetes?",
-                "Do you have high cholesterol?", "Do you smoke?",
-                "Is there a family history of heart disease?", "Have you experienced recent emotional stress?"
-            ]]
+    with gr.TabItem(lang):
+        gr.Markdown(f"### Cardiovascular Assessment ({lang})")
 
-            # Lab parameters group
-            gr.Markdown("### Lab Parameters")
-            lab_fields = [
-                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-                for q, minv, maxv, val in L["nums"]
-            ]
+        gr.Markdown("### Symptoms")
+        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "Does chest pain worsen with exertion?" if lang != "中文" else "胸痛是否在劳类时加重？",
+            "Is it a pressing or squeezing sensation?" if lang != "中文" else "是否为压挤感或紧缩感？",
+            "Does it last longer than 5 minutes?" if lang != "中文" else "是否持续超过5分钟？",
+            "Does it radiate to the shoulder/back/jaw?" if lang != "中文" else "是否放射至肩/背/下巴？",
+            "Does it improve with rest?" if lang != "中文" else "是否在休息后缓解？",
+            "Is it accompanied by cold sweats?" if lang != "中文" else "是否伴冷汗？",
+            "Is there shortness of breath?" if lang != "中文" else "是否呼吸困难？",
+            "Is there nausea or vomiting?" if lang != "中文" else "是否恼恼或呕吐？",
+            "Is there dizziness or fainting?" if lang != "中文" else "是否头晕或晕剧？",
+            "Is there heart palpitations?" if lang != "中文" else "是否心惊？"
+        ]]
 
-            # Free text input
-            gr.Markdown("### Additional Information")
-            free_text = gr.Textbox(label="📝 Provide any additional relevant information")
+        gr.Markdown("### Medical History")
+        history_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "Do you have high blood pressure?" if lang != "中文" else "是否患有高血压？",
+            "Do you have diabetes?" if lang != "中文" else "是否患糖尿病？",
+            "Do you have high cholesterol?" if lang != "中文" else "是否有高血脂？",
+            "Do you smoke?" if lang != "中文" else "是否吸烟？",
+            "Is there a family history of heart disease?" if lang != "中文" else "是否有心脏病家族史？",
+            "Have you experienced recent emotional stress?" if lang != "中文" else "迟期是否有情绪压力？"
+        ]]
 
-    # Combine all fields
-    fields = symptom_fields + history_fields + lab_fields + [free_text]
+        gr.Markdown("### Lab Parameters")
+        lab_fields = [
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            for q, minv, maxv, val in L["nums"]
+        ]
 
-    # Output and submit button
-    output = gr.Textbox(label="🩺 Combined Assessment Result")
-    submit_button = gr.Button("Submit")
-    reset_button = gr.Button("Reset")
+        gr.Markdown("### Additional Information")
+        free_text = gr.Textbox(label="📝 Provide any additional relevant information" if lang != "中文" else "📝 请提供其他相关信息")
 
-    # Submit button functionality
-    submit_button.click(
-        fn=assess_with_huggingface,
-        inputs=[gr.State(lang)] + fields,
-        outputs=output
-    )
+        fields = symptom_fields + history_fields + lab_fields + [free_text]
 
-    # Reset button functionality
-    reset_button.click(
-        fn=lambda: (
-            [None] * len(symptom_fields) +
-            [None] * len(history_fields) +
-            [None] * len(lab_fields) +
-            [""],
-            ""
-        ),
-        inputs=None,
-        outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
-    )
+        with gr.Group():
+            output = gr.Textbox(label="🩺 Combined Assessment Result", key=f"output_{lang}")
+            submit_button = gr.Button("Submit", key=f"submit_{lang}")
+            reset_button = gr.Button("Reset", key=f"reset_{lang}")
 
-# Launch Gradio app
+        submit_button.click(
+            fn=assess_with_huggingface,
+            inputs=[gr.State(lang)] + fields,
+            outputs=output
+        )
+
+        reset_button.click(
+            fn=lambda: (
+                [None] * len(symptom_fields) +
+                [None] * len(history_fields) +
+                [None] * len(lab_fields) +
+                [""],
+                ""
+            ),
+            inputs=None,
+            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
+        )
+
 if __name__ == "__main__":
     with gr.Blocks() as app:
         gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
         with gr.Tabs():
-            make_tab("中文")
+            make_tab("\u4e2d\u6587")
             make_tab("English")
         app.launch(share=True)

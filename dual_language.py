@@ -150,7 +150,7 @@ def make_tab(lang):
         ]
 
         gr.Markdown("### Additional Information")
-       free_text = gr.Textbox(
+        free_text = gr.Textbox(
             label="📝 Provide any additional relevant information" if lang != "中文" else "📝 请提供其他相关信息",
             lines=3,
             max_lines=5,

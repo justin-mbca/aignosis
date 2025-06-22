@@ -1,35 +1,7 @@
 import gradio as gr
-from transformers import pipeline
 
-# Load the Hugging Face pipeline for text classification
-text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
-
-# Define label mapping
-LABEL_MAPPING = {
-    "LABEL_0": "低风险 / Low Risk",
-    "LABEL_1": "中风险 / Moderate Risk",
-    "LABEL_2": "高风险 / High Risk"
-}
-
-# Analyze free text using Hugging Face model
-def analyze_free_text(free_text):
-    if not free_text.strip():
-        return "无额外信息 / No additional information provided."
-
-    try:
-        results = text_analysis_pipeline(free_text)
-        analysis = "\n".join([
-            f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
-            for label in results
-        ])
-        return f"分析结果 / Analysis Results:\n{analysis}"
-    except Exception as e:
-        return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
-
+# Evaluate cardiovascular diseases based on symptoms, history, and lab parameters
 def evaluate_cardiovascular_disease(symptoms, history, lab_params):
-    """
-    根据症状、病史和实验室参数评估可能的心脏病类型。
-    """
     diseases = []
 
     # 高血压（Hypertension）
@@ -61,7 +33,24 @@ def detect_conflicts(structured_result, huggingface_analysis):
         return True
     return False
 
-# Assess structured questions and combine with free text analysis
+# Assess risk based on structured inputs
+def assess(lang, *inputs):
+    risk_score = sum(1 for i in inputs if i == ("是" if lang == "中文" else "Yes"))
+    if risk_score >= 5:
+        return "🔴 高风险 / High Risk"
+    elif risk_score >= 3:
+        return "🟠 中风险 / Moderate Risk"
+    else:
+        return "🟢 低风险 / Low Risk"
+
+# Analyze free text input (placeholder for Hugging Face model integration)
+def analyze_free_text(free_text_input):
+    # Placeholder logic for free text analysis
+    if "胸痛" in free_text_input or "chest pain" in free_text_input:
+        return "🔴 高风险 / High Risk"
+    return "🟢 低风险 / Low Risk"
+
+# Combine structured and free text assessments
 def assess_with_huggingface(lang, *inputs):
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
@@ -111,19 +100,9 @@ def assess_with_huggingface(lang, *inputs):
 
     return combined_result
 
-# Example structured question assessment function
-def assess(lang, *inputs):
-    risk_score = sum(1 for i in inputs if i == ("是" if lang == "中文" else "Yes"))
-    if risk_score >= 5:
-        return "🔴 高风险 / High Risk"
-    elif risk_score >= 3:
-        return "🟠 中风险 / Moderate Risk"
-    else:
-        return "🟢 低风险 / Low Risk"
-
 # Create a tab for each language
 def make_tab(lang):
-    with gr.TabItem(lang):  # 包裹在 TabItem 中
+    with gr.TabItem(lang):
         if lang == "中文":
             L = {
                 "yes": "是", 
@@ -218,6 +197,7 @@ def make_tab(lang):
             outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
         )
 
+# Main application
 if __name__ == "__main__":
     with gr.Blocks() as app:
         gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")

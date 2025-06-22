@@ -22,8 +22,10 @@ def analyze_free_text(free_text):
             f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
             for label in results
         ])
+        print(f"Debug: Free Text Analysis = {analysis}")  # 调试输出
         return f"分析结果 / Analysis Results:\n{analysis}"
     except Exception as e:
+        print(f"Error in analyze_free_text: {e}")  # 错误日志
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
 
 # 检测结构化问题和自由文本分析的冲突
@@ -65,13 +67,32 @@ def evaluate_cardiovascular_disease(symptoms, history, lab_params):
 
 # 综合评估
 def assess_with_huggingface(lang, *inputs):
+    if not any(inputs):
+        return "⚠️ 输入数据不足，无法完成评估 / Insufficient input data to complete the assessment."
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
+    # Debug: Print structured inputs and free text input
+    print(f"Debug: Structured Inputs = {structured_inputs}")
+    print(f"Debug: Free Text Input = {free_text_input}")
+
+
+    # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
+
+    # Debug: Print structured result
+    print(f"Debug: Structured Result = {structured_result}")
+
+    # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
+
+    # Debug: Print Hugging Face analysis result
+    print(f"Debug: Hugging Face Analysis = {huggingface_analysis}")
+
+    # Detect conflicts
     conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
 
+    # Combine results
     combined_result = (
         f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
         f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
@@ -83,31 +104,16 @@ def assess_with_huggingface(lang, *inputs):
             "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
         )
 
-    symptoms = {
-        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
-        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
-    }
-    history = {
-        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
-    }
-    lab_params = {
-        "Systolic BP": structured_inputs[-6],
-        "Diastolic BP": structured_inputs[-5],
-        "LDL-C": structured_inputs[-4],
-        "HDL-C": structured_inputs[-3],
-        "Total Cholesterol": structured_inputs[-2],
-        "Troponin I/T": structured_inputs[-1],
-    }
-    diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
+    combined_result += "### 综合评估 / Combined Assessment:\n"
+    combined_result += "综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
 
-    combined_result += "### 疾病评估 / Disease Assessment:\n"
-    combined_result += "\n".join(diseases)
-
+    print(f"Debug: Combined Result = {combined_result}")  # 调试输出
     return combined_result
 
 # 评估结构化问题
 def assess(lang, *inputs):
-    risk_score = sum(1 for i in inputs if i == "是")  # Assume "是" indicates risk
+    risk_score = sum(1 for i in inputs if i == ("是" if lang == "中文" else "Yes"))
+    print(f"Debug: Risk Score = {risk_score}")  # 调试输出
     if risk_score >= 5:
         return "🔴 高风险 / High Risk"
     elif risk_score >= 3:

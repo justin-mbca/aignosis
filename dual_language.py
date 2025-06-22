@@ -86,64 +86,100 @@ def assess(lang, *inputs):
         return "🟢 低风险 / Low Risk"
 
 def make_tab(lang):
-    L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
-    yesno = [L["yes"], L["no"]]
-    with gr.TabItem(lang):
-        gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
+    if lang == "中文":
+        L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
+        yesno = [L["yes"], L["no"]]
+        with gr.TabItem(lang):
+            gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
 
-        # Symptom group
-        gr.Markdown("### 症状 / Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-            "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
-            "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
-            "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
-        ]]
+            # Symptom group
+            gr.Markdown("### 症状 / Symptoms")
+            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
+                "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
+                "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
+                "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
+            ]]
 
-        # Medical history group
-        gr.Markdown("### 病史 / Medical History")
-        history_fields = [gr.Radio(choices=yesno, label=q) for q in [
-            "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
-            "是否有心脏病家族史？", "近期是否有情绪压力？"
-        ]]
+            # Medical history group
+            gr.Markdown("### 病史 / Medical History")
+            history_fields = [gr.Radio(choices=yesno, label=q) for q in [
+                "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
+                "是否有心脏病家族史？", "近期是否有情绪压力？"
+            ]]
 
-        # Lab parameters group
-        gr.Markdown("### 实验室参数 / Lab Parameters")
-        lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-            for q, minv, maxv, val in L["nums"]
-        ]
+            # Lab parameters group
+            gr.Markdown("### 实验室参数 / Lab Parameters")
+            lab_fields = [
+                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+                for q, minv, maxv, val in L["nums"]
+            ]
 
-        # Free text input
-        gr.Markdown("### 其他信息 / Additional Information")
-        free_text = gr.Textbox(label="📝 请提供其他相关信息 / Provide any additional relevant information")
+            # Free text input
+            gr.Markdown("### 其他信息 / Additional Information")
+            free_text = gr.Textbox(label="📝 请提供其他相关信息 / Provide any additional relevant information")
 
-        # Combine all fields
-        fields = symptom_fields + history_fields + lab_fields + [free_text]
+    elif lang == "English":
+        L = {"yes": "Yes", "no": "No", "nums": [("Systolic BP (mmHg)", 60, 220, 120)]}
+        yesno = [L["yes"], L["no"]]
+        with gr.TabItem(lang):
+            gr.Markdown(f"### Cardiovascular Assessment System ({lang})")
 
-        # Output and submit button
-        output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result")
-        submit_button = gr.Button("提交评估 / Submit")
-        reset_button = gr.Button("重置 / Reset")  # Add reset button
+            # Symptom group
+            gr.Markdown("### Symptoms")
+            symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
+                "Does chest pain worsen with exertion?", "Is it a pressing or squeezing sensation?",
+                "Does it last longer than 5 minutes?", "Does it radiate to the shoulder/back/jaw?",
+                "Does it improve with rest?", "Is it accompanied by cold sweats?",
+                "Is there shortness of breath?", "Is there nausea or vomiting?",
+                "Is there dizziness or fainting?", "Is there heart palpitations?"
+            ]]
 
-        # Submit button functionality
-        submit_button.click(
-            fn=assess_with_huggingface,  # Function to process inputs
-            inputs=[gr.State(lang)] + fields,
-            outputs=output
-        )
+            # Medical history group
+            gr.Markdown("### Medical History")
+            history_fields = [gr.Radio(choices=yesno, label=q) for q in [
+                "Do you have high blood pressure?", "Do you have diabetes?",
+                "Do you have high cholesterol?", "Do you smoke?",
+                "Is there a family history of heart disease?", "Have you experienced recent emotional stress?"
+            ]]
 
-        # Reset button functionality
-        reset_button.click(
-            fn=lambda: (
-                [None] * len(symptom_fields) +  # Reset all Radio fields
-                [None] * len(history_fields) +  # Reset all Radio fields
-                [None] * len(lab_fields) +      # Reset all Number fields
-                [""],                          # Reset the free text field
-                ""                             # Reset the output field
-            ),
-            inputs=None,
-            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]  # Reset all inputs and the output
-        )
+            # Lab parameters group
+            gr.Markdown("### Lab Parameters")
+            lab_fields = [
+                gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+                for q, minv, maxv, val in L["nums"]
+            ]
+
+            # Free text input
+            gr.Markdown("### Additional Information")
+            free_text = gr.Textbox(label="📝 Provide any additional relevant information")
+
+    # Combine all fields
+    fields = symptom_fields + history_fields + lab_fields + [free_text]
+
+    # Output and submit button
+    output = gr.Textbox(label="🩺 Combined Assessment Result")
+    submit_button = gr.Button("Submit")
+    reset_button = gr.Button("Reset")  # Add reset button
+
+    # Submit button functionality
+    submit_button.click(
+        fn=assess_with_huggingface,  # Function to process inputs
+        inputs=[gr.State(lang)] + fields,
+        outputs=output
+    )
+
+    # Reset button functionality
+    reset_button.click(
+        fn=lambda: (
+            [None] * len(symptom_fields) +  # Reset all Radio fields
+            [None] * len(history_fields) +  # Reset all Radio fields
+            [None] * len(lab_fields) +      # Reset all Number fields
+            [""],                          # Reset the free text field
+            ""                             # Reset the output field
+        ),
+        inputs=None,
+        outputs=symptom_fields + history_fields + lab_fields + [free_text, output]  # Reset all inputs and the output
+    )
 # Launch Gradio app
 if __name__ == "__main__":
     with gr.Blocks() as app:

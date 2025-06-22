@@ -185,7 +185,7 @@ def make_tab(lang):
         lines=3,
         max_lines=5,
         placeholder="请输入任何你想补充的健康信息……" if lang == "中文" else "Type here...",
-        interactive=True
+        max_length=500  # Limit input to 500 characters
     )
 
     # Combine all fields

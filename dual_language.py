@@ -2,7 +2,9 @@ import gradio as gr
 from transformers import pipeline
 
 # Load the Hugging Face pipeline for text classification
-text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
+text_analysis_pipeline = pipeline("text-classification",
+                                  model="dmis-lab/biobert-base-cased-v1.1",
+                                  from_pt=True)  # Force loading the model using PyTorch weights)
 
 # 定义标签映射
 LABEL_MAPPING = {
@@ -77,7 +79,63 @@ def evaluate_cardiovascular_disease(symptoms, history, lab_params):
     return diseases
 
 # 综合评估
+
 def assess_with_huggingface(lang, *inputs):
+    if not any(inputs):
+        return "⚠️ 输入数据不足，无法完成评估 / Insufficient input data to complete the assessment."
+    
+    structured_inputs = inputs[:-1]
+    free_text_input = inputs[-1]
+
+    # Process structured inputs
+    structured_result = assess(lang, *structured_inputs)
+
+    # Analyze free text
+    huggingface_analysis = analyze_free_text(free_text_input)
+
+    # Detect conflicts
+    conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
+
+    # Extract lab parameters
+    lab_params = {
+        "Systolic BP": structured_inputs[-6],
+        "Diastolic BP": structured_inputs[-5],
+        "LDL-C": structured_inputs[-4],
+        "HDL-C": structured_inputs[-3],
+        "Total Cholesterol": structured_inputs[-2],
+        "Troponin I/T": structured_inputs[-1],
+    }
+
+    # Extract symptoms and history
+    symptoms = {
+        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
+        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
+    }
+    history = {
+        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
+    }
+
+    # Evaluate diseases
+    diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
+
+    # Combine results
+    combined_result = (
+        f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
+        f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
+    )
+
+    if conflict_detected:
+        combined_result += (
+            "⚠️ 检测到冲突 / Conflict Detected:\n"
+            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
+        )
+
+    combined_result += "### 疾病评估 / Disease Assessment:\n"
+    combined_result += "\n".join(diseases)
+
+    return combined_result
+
+def assess_with_huggingface_1(lang, *inputs):
     if not any(inputs):
         return "⚠️ 输入数据不足，无法完成评估 / Insufficient input data to complete the assessment."
     structured_inputs = inputs[:-1]

@@ -39,10 +39,16 @@ def assess_with_huggingface(lang, *inputs):
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
+    # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
+
+    # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
+
+    # Detect conflicts
     conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
 
+    # Combine results
     combined_result = (
         f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
         f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
@@ -50,14 +56,59 @@ def assess_with_huggingface(lang, *inputs):
 
     if conflict_detected:
         combined_result += (
-            "\u26a0\ufe0f 检测到冲突 / Conflict Detected:\n"
-            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息\n\n"
+            "⚠️ 检测到冲突 / Conflict Detected:\n"
+            "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
         )
 
-    combined_result += "### 综合评估 / Combined Assessment:\n"
-    combined_result += "综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
+    # Evaluate possible cardiovascular diseases
+    symptoms = {
+        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
+        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
+    }
+    history = {
+        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
+    }
+    lab_params = {
+        "Systolic BP": structured_inputs[-3],
+        "Diastolic BP": structured_inputs[-2],
+        "LDL-C": structured_inputs[-1],
+    }
+    diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
+
+    combined_result += "### 疾病评估 / Disease Assessment:\n"
+    combined_result += "\n".join(diseases)
 
     return combined_result
+
+ if lang == "中文":
+        L = {
+            "yes": "是", 
+            "no": "否", 
+            "nums": [
+                ("收缩压 (mmHg)", 60, 220, 120),
+                ("舒张压 (mmHg)", 40, 120, 80),
+                ("总胆固醇 (mg/dL)", 100, 300, 200),
+                ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
+                ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
+                ("甘油三酯 (mg/dL)", 50, 500, 150),
+                ("空腹血糖 (mg/dL)", 50, 300, 100)
+            ]
+        }
+    else:
+        L = {
+            "yes": "Yes", 
+            "no": "No", 
+            "nums": [
+                ("Systolic BP (mmHg)", 60, 220, 120),
+                ("Diastolic BP (mmHg)", 40, 120, 80),
+                ("Total Cholesterol (mg/dL)", 100, 300, 200),
+                ("LDL-C (mg/dL)", 50, 200, 100),
+                ("HDL-C (mg/dL)", 20, 100, 50),
+                ("Triglycerides (mg/dL)", 50, 500, 150),
+                ("Fasting Glucose (mg/dL)", 50, 300, 100)
+            ]
+        }
+
 
 # Example structured question assessment function
 def assess(lang, *inputs):
@@ -72,9 +123,33 @@ def assess(lang, *inputs):
 # Create a tab for each language
 def make_tab(lang):
     if lang == "中文":
-        L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
+        L = {
+            "yes": "是", 
+            "no": "否", 
+            "nums": [
+                ("收缩压 (mmHg)", 60, 220, 120),
+                ("舒张压 (mmHg)", 40, 120, 80),
+                ("总胆固醇 (mg/dL)", 100, 300, 200),
+                ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
+                ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
+                ("甘油三酯 (mg/dL)", 50, 500, 150),
+                ("空腹血糖 (mg/dL)", 50, 300, 100)
+            ]
+        }
     else:
-        L = {"yes": "Yes", "no": "No", "nums": [("Systolic BP (mmHg)", 60, 220, 120)]}
+        L = {
+            "yes": "Yes", 
+            "no": "No", 
+            "nums": [
+                ("Systolic BP (mmHg)", 60, 220, 120),
+                ("Diastolic BP (mmHg)", 40, 120, 80),
+                ("Total Cholesterol (mg/dL)", 100, 300, 200),
+                ("LDL-C (mg/dL)", 50, 200, 100),
+                ("HDL-C (mg/dL)", 20, 100, 50),
+                ("Triglycerides (mg/dL)", 50, 500, 150),
+                ("Fasting Glucose (mg/dL)", 50, 300, 100)
+            ]
+        }
 
     yesno = [L["yes"], L["no"]]
 

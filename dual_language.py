@@ -2,25 +2,22 @@ import gradio as gr
 from transformers import pipeline
 
 # Load the Hugging Face pipeline for text classification
-# Replace "dmis-lab/biobert-base-cased-v1.1" with a fine-tuned model if needed
 text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
-# 定义标签映射
+
+# Define label mapping
 LABEL_MAPPING = {
     "LABEL_0": "低风险 / Low Risk",
     "LABEL_1": "中风险 / Moderate Risk",
     "LABEL_2": "高风险 / High Risk"
 }
 
-# 使用 Hugging Face 模型分析自由文本
+# Analyze free text using Hugging Face model
 def analyze_free_text(free_text):
     if not free_text.strip():
         return "无额外信息 / No additional information provided."
     
     try:
-        # 使用 Hugging Face 模型分析自由文本
         results = text_analysis_pipeline(free_text)
-        
-        # 转换标签为文字描述
         analysis = "\n".join([
             f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
             for label in results
@@ -28,36 +25,24 @@ def analyze_free_text(free_text):
         return f"分析结果 / Analysis Results:\n{analysis}"
     except Exception as e:
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
-    
+
+# Detect conflicts between structured questions and free text analysis
 def detect_conflicts(structured_result, huggingface_analysis):
-    """
-    检测结构化问题的结果和自由输入文字的分析结果是否存在冲突。
-    """
-    # 示例逻辑：如果结构化问题的结果是低风险，但自由文本分析显示高风险，则认为存在冲突
     if "低风险" in structured_result and "高风险" in huggingface_analysis:
         return True
     if "高风险" in structured_result and "低风险" in huggingface_analysis:
         return True
-
-    # 如果没有检测到冲突
-    return False    #最近一周经常感到胸闷，尤其是在爬楼梯时。持续时间大约5分钟，休息后会缓解。家族中父亲有冠心病史。
+    return False
 
 # Assess structured questions and combine with free text analysis
 def assess_with_huggingface(lang, *inputs):
-    # Separate structured inputs and free text
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
-    # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
-
-    # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
-
-    # Detect conflicts
     conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
 
-    # Combine results
     combined_result = (
         f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
         f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
@@ -76,7 +61,6 @@ def assess_with_huggingface(lang, *inputs):
 
 # Example structured question assessment function
 def assess(lang, *inputs):
-    # Example logic: Calculate risk level based on structured questions
     risk_score = sum(1 for i in inputs if i == "是")  # Assume "是" indicates risk
     if risk_score >= 5:
         return "🔴 高风险 / High Risk"
@@ -85,6 +69,7 @@ def assess(lang, *inputs):
     else:
         return "🟢 低风险 / Low Risk"
 
+# Create a tab for each language
 def make_tab(lang):
     if lang == "中文":
         L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
@@ -159,11 +144,11 @@ def make_tab(lang):
     # Output and submit button
     output = gr.Textbox(label="🩺 Combined Assessment Result")
     submit_button = gr.Button("Submit")
-    reset_button = gr.Button("Reset")  # Add reset button
+    reset_button = gr.Button("Reset")
 
     # Submit button functionality
     submit_button.click(
-        fn=assess_with_huggingface,  # Function to process inputs
+        fn=assess_with_huggingface,
         inputs=[gr.State(lang)] + fields,
         outputs=output
     )
@@ -171,15 +156,16 @@ def make_tab(lang):
     # Reset button functionality
     reset_button.click(
         fn=lambda: (
-            [None] * len(symptom_fields) +  # Reset all Radio fields
-            [None] * len(history_fields) +  # Reset all Radio fields
-            [None] * len(lab_fields) +      # Reset all Number fields
-            [""],                          # Reset the free text field
-            ""                             # Reset the output field
+            [None] * len(symptom_fields) +
+            [None] * len(history_fields) +
+            [None] * len(lab_fields) +
+            [""],
+            ""
         ),
         inputs=None,
-        outputs=symptom_fields + history_fields + lab_fields + [free_text, output]  # Reset all inputs and the output
+        outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
     )
+
 # Launch Gradio app
 if __name__ == "__main__":
     with gr.Blocks() as app:

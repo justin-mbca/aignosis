@@ -123,99 +123,100 @@ def assess(lang, *inputs):
 
 # Create a tab for each language
 def make_tab(lang):
-    if lang == "中文":
-        L = {
-            "yes": "是", 
-            "no": "否", 
-            "nums": [
-                ("收缩压 (mmHg)", 60, 220, 120),
-                ("舒张压 (mmHg)", 40, 120, 80),
-                ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
-                ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
-            ]
-        }
-    else:
-        L = {
-            "yes": "Yes", 
-            "no": "No", 
-            "nums": [
-                ("Systolic BP (mmHg)", 60, 220, 120),
-                ("Diastolic BP (mmHg)", 40, 120, 80),
-                ("LDL-C (mg/dL)", 50, 200, 100),
-                ("Troponin I/T (ng/mL)", 0, 50, 0.01)
-            ]
-        }
+    with gr.TabItem(lang):  # 包裹在 TabItem 中
+        if lang == "中文":
+            L = {
+                "yes": "是", 
+                "no": "否", 
+                "nums": [
+                    ("收缩压 (mmHg)", 60, 220, 120),
+                    ("舒张压 (mmHg)", 40, 120, 80),
+                    ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
+                    ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
+                ]
+            }
+        else:
+            L = {
+                "yes": "Yes", 
+                "no": "No", 
+                "nums": [
+                    ("Systolic BP (mmHg)", 60, 220, 120),
+                    ("Diastolic BP (mmHg)", 40, 120, 80),
+                    ("LDL-C (mg/dL)", 50, 200, 100),
+                    ("Troponin I/T (ng/mL)", 0, 50, 0.01)
+                ]
+            }
 
-    yesno = [L["yes"], L["no"]]
+        yesno = [L["yes"], L["no"]]
 
-    # Define symptom fields
-    symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-        "胸痛是否在劳累时加重？" if lang == "中文" else "Does chest pain worsen with exertion?",
-        "是否为压迫感或紧缩感？" if lang == "中文" else "Is it a pressing or squeezing sensation?",
-        "是否持续超过5分钟？" if lang == "中文" else "Does it last longer than 5 minutes?",
-        "是否放射至肩/背/下巴？" if lang == "中文" else "Does it radiate to the shoulder/back/jaw?",
-        "是否在休息后缓解？" if lang == "中文" else "Does it improve with rest?",
-        "是否伴冷汗？" if lang == "中文" else "Is it accompanied by cold sweats?",
-        "是否呼吸困难？" if lang == "中文" else "Is there shortness of breath?",
-        "是否恶心或呕吐？" if lang == "中文" else "Is there nausea or vomiting?",
-        "是否头晕或晕厥？" if lang == "中文" else "Is there dizziness or fainting?",
-        "是否心悸？" if lang == "中文" else "Is there heart palpitations?"
-    ]]
+        # Define symptom fields
+        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "胸痛是否在劳累时加重？" if lang == "中文" else "Does chest pain worsen with exertion?",
+            "是否为压迫感或紧缩感？" if lang == "中文" else "Is it a pressing or squeezing sensation?",
+            "是否持续超过5分钟？" if lang == "中文" else "Does it last longer than 5 minutes?",
+            "是否放射至肩/背/下巴？" if lang == "中文" else "Does it radiate to the shoulder/back/jaw?",
+            "是否在休息后缓解？" if lang == "中文" else "Does it improve with rest?",
+            "是否伴冷汗？" if lang == "中文" else "Is it accompanied by cold sweats?",
+            "是否呼吸困难？" if lang == "中文" else "Is there shortness of breath?",
+            "是否恶心或呕吐？" if lang == "中文" else "Is there nausea or vomiting?",
+            "是否头晕或晕厥？" if lang == "中文" else "Is there dizziness or fainting?",
+            "是否心悸？" if lang == "中文" else "Is there heart palpitations?"
+        ]]
 
-    # Define history fields
-    history_fields = [gr.Radio(choices=yesno, label=q) for q in [
-        "是否患有高血压？" if lang == "中文" else "Do you have high blood pressure?",
-        "是否患糖尿病？" if lang == "中文" else "Do you have diabetes?",
-        "是否有高血脂？" if lang == "中文" else "Do you have high cholesterol?",
-        "是否吸烟？" if lang == "中文" else "Do you smoke?",
-        "是否有心脏病家族史？" if lang == "中文" else "Is there a family history of heart disease?",
-        "近期是否有情绪压力？" if lang == "中文" else "Have you experienced recent emotional stress?"
-    ]]
+        # Define history fields
+        history_fields = [gr.Radio(choices=yesno, label=q) for q in [
+            "是否患有高血压？" if lang == "中文" else "Do you have high blood pressure?",
+            "是否患糖尿病？" if lang == "中文" else "Do you have diabetes?",
+            "是否有高血脂？" if lang == "中文" else "Do you have high cholesterol?",
+            "是否吸烟？" if lang == "中文" else "Do you smoke?",
+            "是否有心脏病家族史？" if lang == "中文" else "Is there a family history of heart disease?",
+            "近期是否有情绪压力？" if lang == "中文" else "Have you experienced recent emotional stress?"
+        ]]
 
-    # Define lab fields
-    lab_fields = [
-        gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-        for q, minv, maxv, val in L["nums"]
-    ]
+        # Define lab fields
+        lab_fields = [
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            for q, minv, maxv, val in L["nums"]
+        ]
 
-    # Define free text input
-    gr.Markdown("### Additional Information")
-    free_text = gr.Textbox(
-        label="📝 请提供其他相关信息" if lang == "中文" else "📝 Provide any additional relevant information",
-        lines=3,
-        max_lines=5,
-        placeholder="请输入任何你想补充的健康信息……" if lang == "中文" else "Type here...",
-        max_length=500  # Limit input to 500 characters
-    )
+        # Define free text input
+        gr.Markdown("### Additional Information")
+        free_text = gr.Textbox(
+            label="📝 请提供其他相关信息" if lang == "中文" else "📝 Provide any additional relevant information",
+            lines=3,
+            max_lines=5,
+            placeholder="请输入任何你想补充的健康信息……" if lang == "中文" else "Type here...",
+            interactive=True
+        )
 
-    # Combine all fields
-    fields = symptom_fields + history_fields + lab_fields + [free_text]
+        # Combine all fields
+        fields = symptom_fields + history_fields + lab_fields + [free_text]
 
-    # Define output and buttons
-    with gr.Group():
-        output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result", key=f"output_{lang}")
-        submit_button = gr.Button("提交评估" if lang == "中文" else "Submit", key=f"submit_{lang}")
-        reset_button = gr.Button("重置" if lang == "中文" else "Reset", key=f"reset_{lang}")
+        # Define output and buttons
+        with gr.Group():
+            output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result", key=f"output_{lang}")
+            submit_button = gr.Button("提交评估" if lang == "中文" else "Submit", key=f"submit_{lang}")
+            reset_button = gr.Button("重置" if lang == "中文" else "Reset", key=f"reset_{lang}")
 
-    # Submit button functionality
-    submit_button.click(
-        fn=assess_with_huggingface,
-        inputs=[gr.State(lang)] + fields,
-        outputs=output
-    )
+        # Submit button functionality
+        submit_button.click(
+            fn=assess_with_huggingface,
+            inputs=[gr.State(lang)] + fields,
+            outputs=output
+        )
 
-    # Reset button functionality
-    reset_button.click(
-        fn=lambda: (
-            [None] * len(symptom_fields) +
-            [None] * len(history_fields) +
-            [None] * len(lab_fields) +
-            [""],  # Reset free_text
-            ""     # Reset output
-        ),
-        inputs=None,
-        outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
-    )
+        # Reset button functionality
+        reset_button.click(
+            fn=lambda: (
+                [None] * len(symptom_fields) +
+                [None] * len(history_fields) +
+                [None] * len(lab_fields) +
+                [""],  # Reset free_text
+                ""     # Reset output
+            ),
+            inputs=None,
+            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
+        )
 
 if __name__ == "__main__":
     with gr.Blocks() as app:

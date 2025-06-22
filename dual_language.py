@@ -80,7 +80,7 @@ def assess_with_huggingface(lang, *inputs):
 
     return combined_result
 
- if lang == "中文":
+    if lang == "中文":
         L = {
             "yes": "是", 
             "no": "否", 
@@ -129,11 +129,8 @@ def make_tab(lang):
             "nums": [
                 ("收缩压 (mmHg)", 60, 220, 120),
                 ("舒张压 (mmHg)", 40, 120, 80),
-                ("总胆固醇 (mg/dL)", 100, 300, 200),
                 ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
-                ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
-                ("甘油三酯 (mg/dL)", 50, 500, 150),
-                ("空腹血糖 (mg/dL)", 50, 300, 100)
+                ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
             ]
         }
     else:
@@ -143,14 +140,10 @@ def make_tab(lang):
             "nums": [
                 ("Systolic BP (mmHg)", 60, 220, 120),
                 ("Diastolic BP (mmHg)", 40, 120, 80),
-                ("Total Cholesterol (mg/dL)", 100, 300, 200),
                 ("LDL-C (mg/dL)", 50, 200, 100),
-                ("HDL-C (mg/dL)", 20, 100, 50),
-                ("Triglycerides (mg/dL)", 50, 500, 150),
-                ("Fasting Glucose (mg/dL)", 50, 300, 100)
+                ("Troponin I/T (ng/mL)", 0, 50, 0.01)
             ]
         }
-
     yesno = [L["yes"], L["no"]]
 
     with gr.TabItem(lang):

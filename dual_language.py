@@ -153,20 +153,28 @@ def make_tab(lang):
 
         gr.Markdown("### Symptoms")
         symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-            "胸痛是否在劳累时加重？" if lang == "中文" else "Does chest pain worsen with exertion?",
-            "是否呼吸困难？" if lang == "中文" else "Is there shortness of breath?"
+            "Does chest pain worsen with exertion?" if lang != "中文" else "胸痛是否在劳累时加重？",
+            "Is it a pressing or squeezing sensation?" if lang != "中文" else "是否为压迫感或紧缩感？",
+            "Does it last longer than 5 minutes?" if lang != "中文" else "是否持续超过5分钟？",
+            "Does it radiate to the shoulder/back/jaw?" if lang != "中文" else "是否放射至肩/背/下巴？",
+            "Does it improve with rest?" if lang != "中文" else "是否在休息后缓解？",
+            "Is it accompanied by cold sweats?" if lang != "中文" else "是否伴冷汗？",
+            "Is there shortness of breath?" if lang != "中文" else "是否呼吸困难？",
+            "Is there nausea or vomiting?" if lang != "中文" else "是否恶心或呕吐？",
+            "Is there dizziness or fainting?" if lang != "中文" else "是否头晕或晕厥？",
+            "Is there heart palpitations?" if lang != "中文" else "是否心悸？"
         ]]
 
         gr.Markdown("### Medical History")
         history_fields = [gr.Radio(choices=yesno, label=q) for q in [
-            "是否有心脏病家族史？" if lang == "中文" else "Is there a family history of heart disease?"
+            "Do you have high blood pressure?" if lang != "中文" else "是否患有高血压？",
+            "Do you have diabetes?" if lang != "中文" else "是否患糖尿病？",
+            "Do you have high cholesterol?" if lang != "中文" else "是否有高血脂？",
+            "Do you smoke?" if lang != "中文" else "是否吸烟？",
+            "Is there a family history of heart disease?" if lang != "中文" else "是否有心脏病家族史？",
+            "Have you experienced recent emotional stress?" if lang != "中文" else "近期是否有情绪压力？"
         ]]
 
-        gr.Markdown("### Lab Parameters")
-        lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
-            for q, minv, maxv, val in L["nums"]
-        ]
 
         gr.Markdown("### Additional Information")
         free_text = gr.Textbox(

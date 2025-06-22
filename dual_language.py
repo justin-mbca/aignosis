@@ -215,38 +215,77 @@ def assess(lang, *inputs):
 # 创建语言标签页
 def make_tab(lang):
     L = {
-        "yes": "是", 
-        "no": "否", 
+        "yes": "是" if lang == "中文" else "Yes",
+        "no": "否" if lang == "中文" else "No",
         "nums": [
-            ("收缩压 (mmHg)", 60, 220, 120),
-            ("舒张压 (mmHg)", 40, 120, 80),
-            ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
-            ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
-            ("总胆固醇 (Total Cholesterol, mg/dL)", 100, 300, 200),
-            ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
+            (
+                "收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)",
+                60, 220, 120
+            ),
+            (
+                "舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)",
+                40, 120, 80
+            ),
+            (
+                "低密度脂蛋白 (LDL-C, mg/dL)" if lang == "中文" else "LDL-C (mg/dL)",
+                50, 200, 100
+            ),
+            (
+                "高密度脂蛋白 (HDL-C, mg/dL)" if lang == "中文" else "HDL-C (mg/dL)",
+                20, 100, 50
+            ),
+            (
+                "总胆固醇 (Total Cholesterol, mg/dL)" if lang == "中文" else "Total Cholesterol (mg/dL)",
+                100, 300, 200
+            ),
+            (
+                "肌钙蛋白 (Troponin I/T, ng/mL)" if lang == "中文" else "Troponin I/T (ng/mL)",
+                0, 50, 0.01
+            )
         ]
     }
     yesno = [L["yes"], L["no"]]
+    symptom_questions = [
+        "胸痛是否在劳累时加重？" if lang == "中文" else "Is chest pain aggravated by exertion?",
+        "是否为压迫感或紧缩感？" if lang == "中文" else "Is it a pressing or tightening sensation?",
+        "是否持续超过5分钟？" if lang == "中文" else "Does it last more than 5 minutes?",
+        "是否放射至肩/背/下巴？" if lang == "中文" else "Does it radiate to shoulder/back/jaw?",
+        "是否在休息后缓解？" if lang == "中文" else "Is it relieved by rest?",
+        "是否伴冷汗？" if lang == "中文" else "Is it accompanied by cold sweat?",
+        "是否呼吸困难？" if lang == "中文" else "Is there shortness of breath?",
+        "是否恶心或呕吐？" if lang == "中文" else "Is there nausea or vomiting?",
+        "是否头晕或晕厥？" if lang == "中文" else "Is there dizziness or fainting?",
+        "是否心悸？" if lang == "中文" else "Is there palpitations?"
+    ]
+    history_questions = [
+        "是否患有高血压？" if lang == "中文" else "Do you have hypertension?",
+        "是否患糖尿病？" if lang == "中文" else "Do you have diabetes?",
+        "是否有高血脂？" if lang == "中文" else "Do you have hyperlipidemia?",
+        "是否吸烟？" if lang == "中文" else "Do you smoke?",
+        "是否有心脏病家族史？" if lang == "中文" else "Family history of heart disease?",
+        "近期是否有情绪压力？" if lang == "中文" else "Recent emotional stress?"
+    ]
     with gr.TabItem(lang):
-        gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
+        gr.Markdown(
+            f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})"
+        )
 
         # Symptom group with default values
-        gr.Markdown("### 症状 / Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, value=L["no"], label=q) for q in [
-            "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
-            "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
-            "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
-        ]]
+        gr.Markdown("### 症状 / Symptoms" if lang == "中文" else "### Symptoms")
+        symptom_fields = [
+            gr.Radio(choices=yesno, value=L["no"], label=q)
+            for q in symptom_questions
+        ]
 
         # Medical history group with default values
-        gr.Markdown("### 病史 / Medical History")
-        history_fields = [gr.Radio(choices=yesno, value=L["no"], label=q) for q in [
-            "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
-            "是否有心脏病家族史？", "近期是否有情绪压力？"
-        ]]
+        gr.Markdown("### 病史 / Medical History" if lang == "中文" else "### Medical History")
+        history_fields = [
+            gr.Radio(choices=yesno, value=L["no"], label=q)
+            for q in history_questions
+        ]
 
         # Lab parameters group with default values
-        gr.Markdown("### 实验室参数 / Lab Parameters")
+        gr.Markdown("### 实验室参数 / Lab Parameters" if lang == "中文" else "### Lab Parameters")
         lab_fields = [
             gr.Number(
                 label=f"{q} ({minv}-{maxv})",
@@ -258,9 +297,9 @@ def make_tab(lang):
         ]
 
         # Free text input
-        gr.Markdown("### 其他信息 / Additional Information")
+        gr.Markdown("### 其他信息 / Additional Information" if lang == "中文" else "### Additional Information")
         free_text = gr.Textbox(
-            label="📝 请提供其他相关信息 / Provide any additional relevant information",
+            label="📝 请提供其他相关信息 / Provide any additional relevant information" if lang == "中文" else "📝 Provide any additional relevant information",
             placeholder="请输入任何你想补充的健康信息……" if lang == "中文" else "Type here...",
             lines=3,
             max_lines=5,
@@ -271,9 +310,9 @@ def make_tab(lang):
         fields = symptom_fields + history_fields + lab_fields + [free_text]
 
         # Output and submit button
-        output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result")
-        submit_button = gr.Button("提交评估 / Submit")
-        reset_button = gr.Button("重置 / Reset")
+        output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result" if lang == "中文" else "🩺 Combined Assessment Result")
+        submit_button = gr.Button("提交评估 / Submit" if lang == "中文" else "Submit")
+        reset_button = gr.Button("重置 / Reset" if lang == "中文" else "Reset")
 
         # Submit button functionality
         submit_button.click(
@@ -285,8 +324,8 @@ def make_tab(lang):
         # Reset button functionality
         reset_button.click(
             fn=lambda lang: (
-                ["是" if lang == "中文" else "No"] * len(symptom_fields) +
-                ["是" if lang == "中文" else "No"] * len(history_fields) +
+                [L["no"]] * len(symptom_fields) +
+                [L["no"]] * len(history_fields) +
                 [val for _, _, _, val in L["nums"]] +
                 [""] +
                 [""]
@@ -296,8 +335,8 @@ def make_tab(lang):
         )
 
         # Debugging: Print the reset values
-        print(f"Reset Values for Symptom Fields: {['是' if lang == '中文' else 'No'] * len(symptom_fields)}")
-        print(f"Reset Values for History Fields: {['是' if lang == '中文' else 'No'] * len(history_fields)}")
+        print(f"Reset Values for Symptom Fields: {[L['no']] * len(symptom_fields)}")
+        print(f"Reset Values for History Fields: {[L['no']] * len(history_fields)}")
         print(f"Reset Values for Number Fields: {[val for _, _, _, val in L['nums']]}")
         print(f"Reset Value for Free Text: {''}")
         print(f"Reset Value for Output: {''}")

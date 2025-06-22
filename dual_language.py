@@ -39,6 +39,10 @@ def assess_with_huggingface(lang, *inputs):
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
+    # Handle empty free_text
+    if not free_text_input.strip():
+        free_text_input = "无额外信息 / No additional information provided."
+
     # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
 
@@ -60,24 +64,6 @@ def assess_with_huggingface(lang, *inputs):
             "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
         )
 
-    # Evaluate possible cardiovascular diseases
-    symptoms = {
-        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
-        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
-    }
-    history = {
-        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
-    }
-    lab_params = {
-        "Systolic BP": structured_inputs[-3],
-        "Diastolic BP": structured_inputs[-2],
-        "LDL-C": structured_inputs[-1],
-    }
-    diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
-
-    combined_result += "### 疾病评估 / Disease Assessment:\n"
-    combined_result += "\n".join(diseases)
-
     return combined_result
 
 # Example structured question assessment function
@@ -86,7 +72,7 @@ def assess(lang, *inputs):
     if risk_score >= 5:
         return "🔴 高风险 / High Risk"
     elif risk_score >= 3:
-        return "�\dfe0 中风险 / Moderate Risk"
+        return "🟠 中风险 / Moderate Risk"
     else:
         return "🟢 低风险 / Low Risk"
 
@@ -121,16 +107,16 @@ def make_tab(lang):
 
         gr.Markdown("### Symptoms")
         symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
-            "Does chest pain worsen with exertion?" if lang != "中文" else "胸痛是否在劳类时加重？",
-            "Is it a pressing or squeezing sensation?" if lang != "中文" else "是否为压挤感或紧缩感？",
+            "Does chest pain worsen with exertion?" if lang != "中文" else "胸痛是否在劳累时加重？",
+            "Is it a pressing or squeezing sensation?" if lang != "中文" else "是否为压迫感或紧缩感？",
             "Does it last longer than 5 minutes?" if lang != "中文" else "是否持续超过5分钟？",
             "Does it radiate to the shoulder/back/jaw?" if lang != "中文" else "是否放射至肩/背/下巴？",
             "Does it improve with rest?" if lang != "中文" else "是否在休息后缓解？",
             "Is it accompanied by cold sweats?" if lang != "中文" else "是否伴冷汗？",
             "Is there shortness of breath?" if lang != "中文" else "是否呼吸困难？",
-            "Is there nausea or vomiting?" if lang != "中文" else "是否恼恼或呕吐？",
-            "Is there dizziness or fainting?" if lang != "中文" else "是否头晕或晕剧？",
-            "Is there heart palpitations?" if lang != "中文" else "是否心惊？"
+            "Is there nausea or vomiting?" if lang != "中文" else "是否恶心或呕吐？",
+            "Is there dizziness or fainting?" if lang != "中文" else "是否头晕或晕厥？",
+            "Is there heart palpitations?" if lang != "中文" else "是否心悸？"
         ]]
 
         gr.Markdown("### Medical History")
@@ -140,7 +126,7 @@ def make_tab(lang):
             "Do you have high cholesterol?" if lang != "中文" else "是否有高血脂？",
             "Do you smoke?" if lang != "中文" else "是否吸烟？",
             "Is there a family history of heart disease?" if lang != "中文" else "是否有心脏病家族史？",
-            "Have you experienced recent emotional stress?" if lang != "中文" else "迟期是否有情绪压力？"
+            "Have you experienced recent emotional stress?" if lang != "中文" else "近期是否有情绪压力？"
         ]]
 
         gr.Markdown("### Lab Parameters")
@@ -156,8 +142,8 @@ def make_tab(lang):
             max_lines=5,
             placeholder="Type here..." if lang != "中文" else "请输入任何你想补充的健康信息……",
             interactive=True,
-            max_length=500,  # 限制最大输入字符数为500
-            value=""  # 默认值为空
+            max_length=500,  # Limit input to 500 characters
+            value=""  # Default value is empty
         )
 
         fields = symptom_fields + history_fields + lab_fields + [free_text]
@@ -189,6 +175,6 @@ if __name__ == "__main__":
     with gr.Blocks() as app:
         gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")
         with gr.Tabs():
-            make_tab("\u4e2d\u6587")
+            make_tab("中文")
             make_tab("English")
         app.launch(share=True)

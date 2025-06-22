@@ -2,8 +2,8 @@ import gradio as gr
 from transformers import pipeline
 
 # Load the Hugging Face pipeline for text classification
-# Replace "dmis-lab/biobert-base-cased-v1.1" with a fine-tuned model if needed
 text_analysis_pipeline = pipeline("text-classification", model="dmis-lab/biobert-base-cased-v1.1")
+
 # 定义标签映射
 LABEL_MAPPING = {
     "LABEL_0": "低风险 / Low Risk",
@@ -17,10 +17,7 @@ def analyze_free_text(free_text):
         return "无额外信息 / No additional information provided."
     
     try:
-        # 使用 Hugging Face 模型分析自由文本
         results = text_analysis_pipeline(free_text)
-        
-        # 转换标签为文字描述
         analysis = "\n".join([
             f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
             for label in results
@@ -28,36 +25,53 @@ def analyze_free_text(free_text):
         return f"分析结果 / Analysis Results:\n{analysis}"
     except Exception as e:
         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
-    
+
+# 检测结构化问题和自由文本分析的冲突
 def detect_conflicts(structured_result, huggingface_analysis):
-    """
-    检测结构化问题的结果和自由输入文字的分析结果是否存在冲突。
-    """
-    # 示例逻辑：如果结构化问题的结果是低风险，但自由文本分析显示高风险，则认为存在冲突
     if "低风险" in structured_result and "高风险" in huggingface_analysis:
         return True
     if "高风险" in structured_result and "低风险" in huggingface_analysis:
         return True
+    return False
 
-    # 如果没有检测到冲突
-    return False    #最近一周经常感到胸闷，尤其是在爬楼梯时。持续时间大约5分钟，休息后会缓解。家族中父亲有冠心病史。
+# 评估心血管疾病类型
+def evaluate_cardiovascular_disease(symptoms, history, lab_params):
+    diseases = []
 
-# Assess structured questions and combine with free text analysis
+    # 高血压（Hypertension）
+    if lab_params.get("Systolic BP", 0) > 140 or lab_params.get("Diastolic BP", 0) > 90:
+        diseases.append("高血压 / Hypertension")
+
+    # 冠心病（Coronary Artery Disease, CAD）
+    if history.get("Family History of Heart Disease", False) or lab_params.get("LDL-C", 0) > 130:
+        diseases.append("冠心病 / Coronary Artery Disease")
+
+    # 心肌梗塞（Myocardial Infarction, MI）
+    if symptoms.get("Chest Pain", False) and lab_params.get("Troponin I/T", 0) > 0.04:
+        diseases.append("心肌梗塞 / Myocardial Infarction")
+
+    # 高脂血症（Hyperlipidemia）
+    if lab_params.get("Total Cholesterol", 0) > 200 or lab_params.get("LDL-C", 0) > 130:
+        diseases.append("高脂血症 / Hyperlipidemia")
+
+    # 心力衰竭（Heart Failure）
+    if symptoms.get("Shortness of Breath", False) and lab_params.get("BNP", 0) > 100:
+        diseases.append("心力衰竭 / Heart Failure")
+
+    if not diseases:
+        diseases.append("无明显心血管疾病风险 / No significant cardiovascular disease risk detected")
+
+    return diseases
+
+# 综合评估
 def assess_with_huggingface(lang, *inputs):
-    # Separate structured inputs and free text
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
-    # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
-
-    # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
-
-    # Detect conflicts
     conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
 
-    # Combine results
     combined_result = (
         f"### 来自问题判断 / Based on Structured Questions:\n{structured_result}\n\n"
         f"### 来自自由文字判断 / Based on Free Text Input:\n{huggingface_analysis}\n\n"
@@ -69,14 +83,30 @@ def assess_with_huggingface(lang, *inputs):
             "结构化问题的答案与自由输入文字的分析结果存在冲突，请核实信息。\n\n"
         )
 
-    combined_result += "### 综合评估 / Combined Assessment:\n"
-    combined_result += "综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
+    symptoms = {
+        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
+        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
+    }
+    history = {
+        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
+    }
+    lab_params = {
+        "Systolic BP": structured_inputs[-6],
+        "Diastolic BP": structured_inputs[-5],
+        "LDL-C": structured_inputs[-4],
+        "HDL-C": structured_inputs[-3],
+        "Total Cholesterol": structured_inputs[-2],
+        "Troponin I/T": structured_inputs[-1],
+    }
+    diseases = evaluate_cardiovascular_disease(symptoms, history, lab_params)
+
+    combined_result += "### 疾病评估 / Disease Assessment:\n"
+    combined_result += "\n".join(diseases)
 
     return combined_result
 
-# Example structured question assessment function
+# 评估结构化问题
 def assess(lang, *inputs):
-    # Example logic: Calculate risk level based on structured questions
     risk_score = sum(1 for i in inputs if i == "是")  # Assume "是" indicates risk
     if risk_score >= 5:
         return "🔴 高风险 / High Risk"
@@ -85,13 +115,25 @@ def assess(lang, *inputs):
     else:
         return "🟢 低风险 / Low Risk"
 
+# 创建语言标签页
 def make_tab(lang):
-    L = {"yes": "是", "no": "否", "nums": [("收缩压 (mmHg)", 60, 220, 120)]}
+    L = {
+        "yes": "是", 
+        "no": "否", 
+        "nums": [
+            ("收缩压 (mmHg)", 60, 220, 120),
+            ("舒张压 (mmHg)", 40, 120, 80),
+            ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
+            ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
+            ("总胆固醇 (Total Cholesterol, mg/dL)", 100, 300, 200),
+            ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
+        ]
+    }
     yesno = [L["yes"], L["no"]]
     with gr.TabItem(lang):
         gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
 
-        # Symptom group
+        # 症状
         gr.Markdown("### 症状 / Symptoms")
         symptom_fields = [gr.Radio(choices=yesno, label=q) for q in [
             "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
@@ -99,52 +141,53 @@ def make_tab(lang):
             "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
         ]]
 
-        # Medical history group
+        # 病史
         gr.Markdown("### 病史 / Medical History")
         history_fields = [gr.Radio(choices=yesno, label=q) for q in [
             "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
             "是否有心脏病家族史？", "近期是否有情绪压力？"
         ]]
 
-        # Lab parameters group
+        # 实验室参数
         gr.Markdown("### 实验室参数 / Lab Parameters")
         lab_fields = [
             gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
             for q, minv, maxv, val in L["nums"]
         ]
 
-        # Free text input
+        # 自由文本输入
         gr.Markdown("### 其他信息 / Additional Information")
         free_text = gr.Textbox(label="📝 请提供其他相关信息 / Provide any additional relevant information")
 
-        # Combine all fields
+        # 组合所有字段
         fields = symptom_fields + history_fields + lab_fields + [free_text]
 
-        # Output and submit button
+        # 输出和按钮
         output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result")
         submit_button = gr.Button("提交评估 / Submit")
-        reset_button = gr.Button("重置 / Reset")  # Add reset button
+        reset_button = gr.Button("重置 / Reset")
 
-        # Submit button functionality
+        # 提交按钮功能
         submit_button.click(
-            fn=assess_with_huggingface,  # Function to process inputs
+            fn=assess_with_huggingface,
             inputs=[gr.State(lang)] + fields,
             outputs=output
         )
 
-        # Reset button functionality
+        # 重置按钮功能
         reset_button.click(
             fn=lambda: (
-                [None] * len(symptom_fields) +  # Reset all Radio fields
-                [None] * len(history_fields) +  # Reset all Radio fields
-                [None] * len(lab_fields) +      # Reset all Number fields
-                [""],                          # Reset the free text field
-                ""                             # Reset the output field
+                [None] * len(symptom_fields) +
+                [None] * len(history_fields) +
+                [None] * len(lab_fields) +
+                [""],  # Reset free text
+                ""     # Reset output
             ),
             inputs=None,
-            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]  # Reset all inputs and the output
+            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
         )
-# Launch Gradio app
+
+# 启动 Gradio 应用
 if __name__ == "__main__":
     with gr.Blocks() as app:
         gr.Markdown("## 🌐 智能心血管评估系统 | Bilingual Cardiovascular Assistant")

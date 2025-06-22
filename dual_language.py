@@ -87,16 +87,30 @@ def assess_with_huggingface(lang, *inputs):
     structured_inputs = inputs[:-1]
     free_text_input = inputs[-1]
 
+    # Debug: Print structured inputs and free text input
+    print(f"Debug: Structured Inputs = {structured_inputs}")
+    print(f"Debug: Free Text Input = {free_text_input}")
+
     # Process structured inputs
     structured_result = assess(lang, *structured_inputs)
+
+    # Debug: Print structured result
+    print(f"Debug: Structured Result = {structured_result}")
 
     # Analyze free text
     huggingface_analysis = analyze_free_text(free_text_input)
 
-    # Detect conflicts
-    conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
+    # Debug: Print Hugging Face analysis result
+    print(f"Debug: Hugging Face Analysis = {huggingface_analysis}")
 
-    # Extract lab parameters
+    # Extract symptoms, history, and lab parameters
+    symptoms = {
+        "Chest Pain": "是" in (structured_inputs[0] or "") if lang == "中文" else "Yes" in (structured_inputs[0] or ""),
+        "Shortness of Breath": "是" in (structured_inputs[6] or "") if lang == "中文" else "Yes" in (structured_inputs[6] or ""),
+    }
+    history = {
+        "Family History of Heart Disease": "是" in (structured_inputs[10] or "") if lang == "中文" else "Yes" in (structured_inputs[10] or ""),
+    }
     lab_params = {
         "Systolic BP": structured_inputs[-6],
         "Diastolic BP": structured_inputs[-5],
@@ -106,16 +120,7 @@ def assess_with_huggingface(lang, *inputs):
         "Troponin I/T": structured_inputs[-1],
     }
 
-    # Extract symptoms and history
-    symptoms = {
-        "Chest Pain": "是" in structured_inputs[0] if lang == "中文" else "Yes" in structured_inputs[0],
-        "Shortness of Breath": "是" in structured_inputs[6] if lang == "中文" else "Yes" in structured_inputs[6],
-    }
-    history = {
-        "Family History of Heart Disease": "是" in structured_inputs[10] if lang == "中文" else "Yes" in structured_inputs[10],
-    }
-
-    # Debug: Print inputs for disease evaluation
+    # Debug: Print extracted symptoms, history, and lab parameters
     print(f"Debug: Symptoms = {symptoms}")
     print(f"Debug: History = {history}")
     print(f"Debug: Lab Parameters = {lab_params}")
@@ -125,6 +130,9 @@ def assess_with_huggingface(lang, *inputs):
 
     # Debug: Print detected diseases
     print(f"Debug: Detected Diseases = {diseases}")
+
+    # Detect conflicts
+    conflict_detected = detect_conflicts(structured_result, huggingface_analysis)
 
     # Combine results
     combined_result = (
@@ -140,6 +148,9 @@ def assess_with_huggingface(lang, *inputs):
 
     combined_result += "### 疾病评估 / Disease Assessment:\n"
     combined_result += "\n".join(diseases)
+
+    combined_result += "\n\n### 综合评估 / Combined Assessment:\n"
+    combined_result += "综合考虑结构化问题和自由输入的结果，建议用户根据以上信息采取适当的行动。"
 
     # Debug: Print combined result
     print(f"Debug: Combined Result = {combined_result}")
@@ -203,6 +214,90 @@ def assess(lang, *inputs):
 
 # 创建语言标签页
 def make_tab(lang):
+    L = {
+        "yes": "是", 
+        "no": "否", 
+        "nums": [
+            ("收缩压 (mmHg)", 60, 220, 120),
+            ("舒张压 (mmHg)", 40, 120, 80),
+            ("低密度脂蛋白 (LDL-C, mg/dL)", 50, 200, 100),
+            ("高密度脂蛋白 (HDL-C, mg/dL)", 20, 100, 50),
+            ("总胆固醇 (Total Cholesterol, mg/dL)", 100, 300, 200),
+            ("肌钙蛋白 (Troponin I/T, ng/mL)", 0, 50, 0.01)
+        ]
+    }
+    yesno = [L["yes"], L["no"]]
+    with gr.TabItem(lang):
+        gr.Markdown(f"### 智能心血管评估系统 | Cardiovascular Assessment ({lang})")
+
+        # Symptom group with default values
+        gr.Markdown("### 症状 / Symptoms")
+        symptom_fields = [gr.Radio(choices=yesno, value=L["no"], label=q) for q in [
+            "胸痛是否在劳累时加重？", "是否为压迫感或紧缩感？", "是否持续超过5分钟？",
+            "是否放射至肩/背/下巴？", "是否在休息后缓解？", "是否伴冷汗？",
+            "是否呼吸困难？", "是否恶心或呕吐？", "是否头晕或晕厥？", "是否心悸？"
+        ]]
+
+        # Medical history group with default values
+        gr.Markdown("### 病史 / Medical History")
+        history_fields = [gr.Radio(choices=yesno, value=L["no"], label=q) for q in [
+            "是否患有高血压？", "是否患糖尿病？", "是否有高血脂？", "是否吸烟？",
+            "是否有心脏病家族史？", "近期是否有情绪压力？"
+        ]]
+
+        # Lab parameters group with default values
+        gr.Markdown("### 实验室参数 / Lab Parameters")
+        lab_fields = [
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            for q, minv, maxv, val in L["nums"]
+        ]
+
+        # Free text input
+        gr.Markdown("### 其他信息 / Additional Information")
+        free_text = gr.Textbox(
+            label="📝 请提供其他相关信息 / Provide any additional relevant information",
+            placeholder="请输入任何你想补充的健康信息……" if lang == "中文" else "Type here...",
+            lines=3,
+            max_lines=5,
+            interactive=True
+        )
+
+        # Combine all fields
+        fields = symptom_fields + history_fields + lab_fields + [free_text]
+
+        # Output and submit button
+        output = gr.Textbox(label="🩺 综合评估结果 / Combined Assessment Result")
+        submit_button = gr.Button("提交评估 / Submit")
+        reset_button = gr.Button("重置 / Reset")
+
+        # Submit button functionality
+        submit_button.click(
+            fn=assess_with_huggingface,
+            inputs=[gr.State(lang)] + fields,
+            outputs=output
+        )
+
+        # Reset button functionality
+        reset_button.click(
+            fn=lambda lang: (
+                ["是" if lang == "中文" else "No"] * len(symptom_fields) +
+                ["是" if lang == "中文" else "No"] * len(history_fields) +
+                [val for _, _, _, val in L["nums"]] +
+                [""] +
+                [""]
+            ),
+            inputs=[gr.State(lang)],
+            outputs=symptom_fields + history_fields + lab_fields + [free_text, output]
+        )
+
+        # Debugging: Print the reset values
+        print(f"Reset Values for Symptom Fields: {['是' if lang == '中文' else 'No'] * len(symptom_fields)}")
+        print(f"Reset Values for History Fields: {['是' if lang == '中文' else 'No'] * len(history_fields)}")
+        print(f"Reset Values for Number Fields: {[val for _, _, _, val in L['nums']]}")
+        print(f"Reset Value for Free Text: {''}")
+        print(f"Reset Value for Output: {''}")
+
+def make_tab_1(lang):
     L = {
         "yes": "是", 
         "no": "否", 

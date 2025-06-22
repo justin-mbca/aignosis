@@ -112,7 +112,14 @@ def make_tab(lang):
         ]
 
         gr.Markdown("### Additional Information")
-        free_text = gr.Textbox(label="📝 Provide any additional relevant information" if lang != "中文" else "📝 请提供其他相关信息")
+        #free_text = gr.Textbox(label="📝 Provide any additional relevant information" if lang != "中文" else "📝 请提供其他相关信息")
+        free_text = gr.Textbox(
+            label="📝 Provide any additional relevant information" if lang != "中文" else "📝 请提供其他相关信息",
+            lines=3,
+            max_lines=5,
+            placeholder="Type here..." if lang != "中文" else "请输入任何你想补充的健康信息……",
+            interactive=True
+        )
 
         fields = symptom_fields + history_fields + lab_fields + [free_text]
 

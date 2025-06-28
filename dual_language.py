@@ -1,11 +1,18 @@
 import gradio as gr
-from transformers import pipeline
 
-# Load the Hugging Face pipeline for text classification
-text_analysis_pipeline = pipeline("text-classification",
-                                  model="dmis-lab/biobert-base-cased-v1.1",
-                                  from_pt=True)  # Force loading the model using PyTorch weights)
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 
+# Load the Hugging Face model and tokenizer explicitly
+model = AutoModelForSequenceClassification.from_pretrained("dmis-lab/biobert-base-cased-v1.1")
+tokenizer = AutoTokenizer.from_pretrained("dmis-lab/biobert-base-cased-v1.1")
+
+# Create the pipeline using the loaded model and tokenizer
+text_analysis_pipeline = pipeline(
+    "text-classification",
+    model=model,
+    tokenizer=tokenizer,
+    framework="pt"  # Explicitly specify PyTorch framework
+)
 # 定义标签映射
 LABEL_MAPPING = {
     "LABEL_0": "低风险 / Low Risk",

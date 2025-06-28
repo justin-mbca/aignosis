@@ -1,10 +1,23 @@
 import gradio as gr
-from transformers import pipeline
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 
 # Load the Hugging Face pipeline for text classification
-text_analysis_pipeline = pipeline("text-classification",
-                                  model="dmis-lab/biobert-base-cased-v1.1",
-                                  from_pt=True)  # Force loading the model using PyTorch weights)
+
+# # Load the Hugging Face model and tokenizer explicitly
+# model = AutoModelForSequenceClassification.from_pretrained(
+#     "dmis-lab/biobert-base-cased-v1.1")
+# tokenizer = AutoTokenizer.from_pretrained("dmis-lab/biobert-base-cased-v1.1")
+
+# # Create the pipeline using the loaded model and tokenizer
+# text_analysis_pipeline = pipeline(
+#     "text-classification",
+#     model=model,
+#     tokenizer=tokenizer,
+#     framework="pt"  # Explicitly specify PyTorch framework
+# )
+MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 
 # 定义标签映射
 LABEL_MAPPING = {
@@ -13,22 +26,62 @@ LABEL_MAPPING = {
     "LABEL_2": "高风险 / High Risk"
 }
 
-# 使用 Hugging Face 模型分析自由文本
-def analyze_free_text(free_text):
+# # 使用 Hugging Face 模型分析自由文本
+# def analyze_free_text(free_text):
+#     if not free_text.strip():
+#         return "无额外信息 / No additional information provided."
+
+#     try:
+#         results = text_analysis_pipeline(free_text)
+#         analysis = "\n".join([
+#             f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
+#             for label in results
+#         ])
+#         print(f"Debug: Free Text Analysis = {analysis}")  # 调试输出
+#         return f"分析结果 / Analysis Results:\n{analysis}"
+#     except Exception as e:
+#         print(f"Error in analyze_free_text: {e}")  # 错误日志
+#         return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
+
+
+def analyze_free_text(free_text, lang="English"):
     if not free_text.strip():
         return "无额外信息 / No additional information provided."
-    
     try:
-        results = text_analysis_pipeline(free_text)
-        analysis = "\n".join([
-            f"{LABEL_MAPPING.get(label['label'], label['label'])}: {label['score']:.2f}"
-            for label in results
-        ])
-        print(f"Debug: Free Text Analysis = {analysis}")  # 调试输出
-        return f"分析结果 / Analysis Results:\n{analysis}"
+        if lang == "English":
+            prompt = (
+                "You are a helpful medical assistant. Analyze the following patient description for cardiovascular risk factors, "
+                "symptoms, and possible diseases. Give a concise summary and risk assessment.\n\n"
+                f"Patient free text: {free_text}\n\n"
+                "Analysis:"
+            )
+            result_title = "Analysis Results:"
+        else:
+            prompt = (
+                "你是一名医学助手。请分析以下患者描述，找出心血管风险因素、症状和可能的疾病，并给出简明总结和风险评估。\n\n"
+                f"患者自由文本：{free_text}\n\n"
+                "分析："
+            )
+            result_title = "分析结果："
+        inputs = tokenizer(prompt, return_tensors="pt")
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=256,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.95,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        analysis = result[len(prompt):].strip()
+        print(f"Debug: Free Text LLM Analysis = {analysis}")  # 调试输出
+        return f"{result_title}\n{analysis}"
     except Exception as e:
         print(f"Error in analyze_free_text: {e}")  # 错误日志
-        return f"无法分析自由文本信息 / Unable to analyze free text information: {e}"
+        if lang == "English":
+            return f"Unable to analyze free text information: {e}"
+        else:
+            return f"无法分析自由文本信息：{e}"
 
 # 检测结构化问题和自由文本分析的冲突
 def detect_conflicts(structured_result, huggingface_analysis):
@@ -419,4 +472,4 @@ if __name__ == "__main__":
         with gr.Tabs():
             make_tab("中文")
             make_tab("English")
-        app.launch(share=True)
+        app.launch(share=True, debug=True)  # 启用调试模式以便查看日志

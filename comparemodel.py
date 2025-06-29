@@ -1,5 +1,5 @@
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 import gradio as gr
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 
 # Define label mapping
 LABEL_MAPPING = {
@@ -15,13 +15,6 @@ MODELS = {
     "ClinicalBERT": "emilyalsentzer/Bio_ClinicalBERT"
 }
 
-# Model explanations
-MODEL_EXPLANATIONS = {
-    "BioBERT": "BioBERT 是一个专门针对生物医学文本训练的模型，适用于分析医学相关的文本。",
-    "PubMedBERT": "PubMedBERT 是基于 PubMed 数据训练的模型，专注于生物医学文献的理解。",
-    "ClinicalBERT": "ClinicalBERT 是针对临床文本（如电子病历）优化的模型，适合分析患者相关的临床数据。"
-}
-
 # Load pipelines for each model
 pipelines = {}
 for model_name, model_path in MODELS.items():
@@ -29,91 +22,176 @@ for model_name, model_path in MODELS.items():
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=3)
     pipelines[model_name] = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
-# Analyze structured inputs using all models
+# Define cardiovascular disease classification logic
+def classify_cardiovascular_disease(symptoms, history, lab_params):
+    diseases = []
+    recommendations = []
+
+    # Hypertension
+    if lab_params.get("收缩压 (mmHg)", 0) > 180 or lab_params.get("舒张压 (mmHg)", 0) > 120:
+        diseases.append("高血压 (严重) / Hypertension (Severe)")
+        recommendations.append("这是紧急情况，请立即就医。")
+    elif lab_params.get("收缩压 (mmHg)", 0) > 160 or lab_params.get("舒张压 (mmHg)", 0) > 100:
+        diseases.append("高血压 (中度) / Hypertension (Moderate)")
+        recommendations.append("建议监测血压，减少盐分摄入，保持健康饮食，并咨询医生。")
+    elif lab_params.get("收缩压 (mmHg)", 0) > 140 or lab_params.get("舒张压 (mmHg)", 0) > 90:
+        diseases.append("高血压 (轻度) / Hypertension (Mild)")
+        recommendations.append("建议定期监测血压，保持健康生活方式。")
+
+    # Coronary Artery Disease (CAD)
+    if history.get("是否有心脏病家族史？", "否") == "是" or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
+        diseases.append("冠心病 / Coronary Artery Disease")
+        recommendations.append("建议进行心脏健康检查，避免高脂饮食，并保持适度运动。")
+
+    # Myocardial Infarction (MI)
+    if symptoms.get("胸痛是否在劳累时加重？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.04:
+        diseases.append("心肌梗塞 / Myocardial Infarction")
+        recommendations.append("这是紧急情况，请立即就医。")
+
+    # Hyperlipidemia
+    if lab_params.get("总胆固醇 (Total Cholesterol, mg/dL)", 0) > 200 or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
+        diseases.append("高脂血症 / Hyperlipidemia")
+        recommendations.append("建议减少高脂饮食，增加富含纤维的食物，并咨询医生。")
+
+    # Heart Failure
+    if symptoms.get("是否呼吸困难？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.1:
+        diseases.append("心力衰竭 / Heart Failure")
+        recommendations.append("这是紧急情况，请立即就医。")
+
+    # If no diseases are detected
+    if not diseases:
+        diseases.append("无明显心血管疾病风险 / No significant cardiovascular disease risk detected")
+        recommendations.append("保持健康的生活方式，定期进行健康检查。")
+
+    return diseases, recommendations
+
+MODEL_EXPLANATIONS = {
+    "BioBERT": "BioBERT 是一个专门针对生物医学文本训练的模型，适用于分析医学相关的文本。",
+    "PubMedBERT": "PubMedBERT 是基于 PubMed 数据训练的模型，专注于生物医学文献的理解。",
+    "ClinicalBERT": "ClinicalBERT 是针对临床文本（如电子病历）优化的模型，适合分析患者相关的临床数据。"
+}
+
+def aggregate_model_predictions(results):
+    """
+    Aggregates probabilities from all models to determine the overall risk level.
+    """
+    aggregated_probabilities = {"低风险 / Low Risk": 0, "中风险 / Moderate Risk": 0, "高风险 / High Risk": 0}
+    model_count = 0
+
+    for model_result in results:
+        if isinstance(model_result, dict):  # Ensure valid results
+            for risk, score in model_result["probabilities"].items():
+                if risk in aggregated_probabilities:  # Ensure the key exists
+                    aggregated_probabilities[risk] += score
+            model_count += 1
+
+    # Average the probabilities
+    for risk in aggregated_probabilities:
+        aggregated_probabilities[risk] /= model_count
+
+    # Determine the most likely risk level
+    most_likely = max(aggregated_probabilities, key=aggregated_probabilities.get)
+    return most_likely, aggregated_probabilities
+
+
 def analyze_structured_inputs(symptoms, history, lab_params, lang):
+    # Replace None values in symptoms with "否" (No)
+    symptoms = {key: (value if value is not None else "否") for key, value in symptoms.items()}
+
     # Combine structured inputs into a single text representation
     structured_text = (
-        f"### {'📝 User Inputs' if lang == 'English' else '📝 用户输入'}:\n\n"
-        f"#### {'🩺 Symptoms' if lang == 'English' else '🩺 症状'}:\n" +
+        f"### 📝 用户输入 / User Inputs:\n\n"
+        f"#### 🩺 症状 / Symptoms:\n" +
         "\n".join([f"🔹 {q}: {a}" for q, a in symptoms.items()]) +
-        f"\n\n#### {'🏥 Medical History' if lang == 'English' else '🏥 病史'}:\n" +
+        f"\n\n#### 🏥 病史 / Medical History:\n" +
         "\n".join([f"🔹 {q}: {a}" for q, a in history.items()]) +
-        f"\n\n#### {'🧪 Lab Parameters' if lang == 'English' else '🧪 实验室参数'}:\n" +
+        f"\n\n#### 🧪 实验室参数 / Lab Parameters:\n" +
         "\n".join([f"🔹 {q}: {a}" for q, a in lab_params.items()])
     )
 
+    # Classify cardiovascular diseases and get recommendations
+    diseases, recommendations = classify_cardiovascular_disease(symptoms, history, lab_params)
+
     # Get predictions from all models
-    results = {}
+    model_results = []
     for model_name, classifier in pipelines.items():
         try:
             predictions = classifier(structured_text)
             probabilities = {LABEL_MAPPING[pred["label"]]: pred["score"] for pred in predictions}
             most_likely = max(probabilities, key=probabilities.get)
-            explanation = MODEL_EXPLANATIONS[model_name] if lang == "中文" else MODEL_EXPLANATIONS_EN[model_name]
-            results[model_name] = {
-                "probabilities": probabilities,
+            explanation = MODEL_EXPLANATIONS[model_name]
+            model_results.append({
+                "model_name": model_name,
                 "most_likely": most_likely,
+                "probabilities": probabilities,
                 "explanation": explanation
-            }
+            })
         except Exception as e:
-            results[model_name] = f"Error: {e}"
+            model_results.append({
+                "model_name": model_name,
+                "error": str(e)
+            })
+
+    # Aggregate predictions
+    aggregated_risk, aggregated_probabilities = aggregate_model_predictions(model_results)
 
     # Format the results for display
     formatted_results = [structured_text]  # Include the input string
-    for model_name, result in results.items():
-        if isinstance(result, dict):
-            formatted_results.append(
-                f"### {'📊 ' + model_name + ' Predictions' if lang == 'English' else '📊 ' + model_name + ' 预测'}:\n" +
-                f"✅ {'Prediction' if lang == 'English' else '预测结果'}: {result['most_likely']}\n" +
-                f"📈 {'Probabilities' if lang == 'English' else '概率分布'}:\n" +
-                "\n".join([f"🔹 {risk}: {prob:.2f}" for risk, prob in result["probabilities"].items()]) +
-                f"\n\n📖 {'Model Explanation' if lang == 'English' else '模型解释'}:\n{result['explanation']}"
-            )
+    formatted_results.append(
+        f"### 🩺 疾病分类 / Disease Classification:\n" +
+        "\n".join([f"🔹 {disease}" for disease in diseases])
+    )
+    formatted_results.append(
+        f"### 💡 建议 / Recommendations:\n" +
+        "\n".join([f"🔹 {recommendation}" for recommendation in recommendations])
+    )
+
+    # Add model-specific results
+    formatted_results.append("### 模型预测 / Model Predictions:")
+    for result in model_results:
+        if "error" in result:
+            formatted_results.append(f"- **{result['model_name']}**: Error: {result['error']}")
         else:
-            formatted_results.append(f"### {'📊 ' + model_name + ' Predictions' if lang == 'English' else '📊 ' + model_name + ' 预测'}:\n{result}")
+            formatted_results.append(
+                f"- **{result['model_name']}**:\n"
+                f"  **风险等级 / Risk Level:** {result['most_likely']}\n"
+                f"  **概率分布 / Probability Distribution:**\n" +
+                "\n".join([f"    🔹 {risk}: {score:.2f}" for risk, score in result["probabilities"].items()]) +
+                f"\n  **模型解释 / Model Explanation:** {result['explanation']}\n"
+            )
+
+    # Add aggregated analysis
+    formatted_results.append(
+        f"### 综合分析 / Aggregated Analysis:\n"
+        f"- **综合风险等级 / Overall Risk Level:** {aggregated_risk}\n"
+        f"- **综合概率分布 / Aggregated Probability Distribution:**\n" +
+        "\n".join([f"  🔹 {risk}: {score:.2f}" for risk, score in aggregated_probabilities.items()]) +
+        "\n- **说明 / Explanation:** "
+        "模型预测可能存在差异，因为它们基于不同的数据集进行训练。建议根据综合分析结果采取行动，并在必要时咨询医生。"
+    )
 
     return "\n\n".join(formatted_results)
 
-# Model explanations in English
-MODEL_EXPLANATIONS_EN = {
-    "BioBERT": "BioBERT is a model trained specifically on biomedical text, suitable for analyzing medical-related content.",
-    "PubMedBERT": "PubMedBERT is a model trained on PubMed data, focusing on understanding biomedical literature.",
-    "ClinicalBERT": "ClinicalBERT is optimized for clinical text (e.g., electronic health records) and is suitable for analyzing patient-related clinical data."
-}
-
 # Create Gradio interface for each language
 def make_tab(lang):
+    """
+    Creates a tab for the specified language (Chinese or English).
+    """
     L = {
         "yes": "是" if lang == "中文" else "Yes",
         "no": "否" if lang == "中文" else "No",
         "nums": [
-            (
-                "收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)",
-                60, 220, 120
-            ),
-            (
-                "舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)",
-                40, 120, 80
-            ),
-            (
-                "低密度脂蛋白 (LDL-C, mg/dL)" if lang == "中文" else "LDL-C (mg/dL)",
-                50, 200, 100
-            ),
-            (
-                "高密度脂蛋白 (HDL-C, mg/dL)" if lang == "中文" else "HDL-C (mg/dL)",
-                20, 100, 50
-            ),
-            (
-                "总胆固醇 (Total Cholesterol, mg/dL)" if lang == "中文" else "Total Cholesterol (mg/dL)",
-                100, 300, 200
-            ),
-            (
-                "肌钙蛋白 (Troponin I/T, ng/mL)" if lang == "中文" else "Troponin I/T (ng/mL)",
-                0, 50, 0.01
-            )
+            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
+            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
+            ("低密度脂蛋白 (LDL-C, mg/dL)" if lang == "中文" else "LDL-C (mg/dL)", 50, 200, 100),
+            ("高密度脂蛋白 (HDL-C, mg/dL)" if lang == "中文" else "HDL-C (mg/dL)", 20, 100, 50),
+            ("总胆固醇 (Total Cholesterol, mg/dL)" if lang == "中文" else "Total Cholesterol (mg/dL)", 100, 300, 200),
+            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang == "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
         ]
     }
     yesno = [L["yes"], L["no"]]
+
+    # Grouped questions
     symptom_questions = [
         "胸痛是否在劳累时加重？" if lang == "中文" else "Is chest pain aggravated by exertion?",
         "是否为压迫感或紧缩感？" if lang == "中文" else "Is it a pressing or tightening sensation?",
@@ -137,15 +215,15 @@ def make_tab(lang):
 
     # Create Gradio components
     with gr.Group():
-        gr.Markdown("### 症状 / Symptoms" if lang == "中文" else "### Symptoms")
+        gr.Markdown("### 🩺 症状 / Symptoms" if lang == "中文" else "### 🩺 Symptoms")
         symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptom_questions]
 
     with gr.Group():
-        gr.Markdown("### 病史 / Medical History" if lang == "中文" else "### Medical History")
+        gr.Markdown("### 🏥 病史 / Medical History" if lang == "中文" else "### 🏥 Medical History")
         history_fields = [gr.Radio(choices=yesno, label=q) for q in history_questions]
 
     with gr.Group():
-        gr.Markdown("### 实验室参数 / Lab Parameters" if lang == "中文" else "### Lab Parameters")
+        gr.Markdown("### 🧪 实验室参数 / Lab Parameters" if lang == "中文" else "### 🧪 Lab Parameters")
         lab_fields = [
             gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
             for q, minv, maxv, val in L["nums"]
@@ -155,7 +233,7 @@ def make_tab(lang):
     fields = symptom_fields + history_fields + lab_fields
 
     # Output and submit button
-    output = gr.Textbox(label="模型比较结果 / Model Comparisons" if lang == "中文" else "Model Comparisons")
+    output_text = gr.Textbox(label="结果 / Results" if lang == "中文" else "Results")
     submit_button = gr.Button("提交 / Submit" if lang == "中文" else "Submit")
 
     # Submit button functionality
@@ -167,11 +245,11 @@ def make_tab(lang):
             lang=lang
         ),
         inputs=fields,
-        outputs=output
+        outputs=[output_text]
     )
 
     # Create Gradio interface
-    return gr.Column(fields + [submit_button, output])
+    return gr.Column(fields + [submit_button, output_text])
 
 # Launch Gradio app
 if __name__ == "__main__":

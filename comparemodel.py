@@ -15,6 +15,13 @@ MODELS = {
     "ClinicalBERT": "emilyalsentzer/Bio_ClinicalBERT"
 }
 
+# Model explanations
+MODEL_EXPLANATIONS = {
+    "BioBERT": "BioBERT 是一个专门针对生物医学文本训练的模型，适用于分析医学相关的文本。",
+    "PubMedBERT": "PubMedBERT 是基于 PubMed 数据训练的模型，专注于生物医学文献的理解。",
+    "ClinicalBERT": "ClinicalBERT 是针对临床文本（如电子病历）优化的模型，适合分析患者相关的临床数据。"
+}
+
 # Load pipelines for each model
 pipelines = {}
 for model_name, model_path in MODELS.items():
@@ -26,13 +33,13 @@ for model_name, model_path in MODELS.items():
 def analyze_structured_inputs(symptoms, history, lab_params, lang):
     # Combine structured inputs into a single text representation
     structured_text = (
-        f"### Input Questions and Answers:\n\n"
-        f"Symptoms:\n" +
-        "\n".join([f"{q}: {a}" for q, a in symptoms.items()]) +
-        f"\n\nHistory:\n" +
-        "\n".join([f"{q}: {a}" for q, a in history.items()]) +
-        f"\n\nLab Parameters:\n" +
-        "\n".join([f"{q}: {a}" for q, a in lab_params.items()])
+        f"### {'📝 User Inputs' if lang == 'English' else '📝 用户输入'}:\n\n"
+        f"#### {'🩺 Symptoms' if lang == 'English' else '🩺 症状'}:\n" +
+        "\n".join([f"🔹 {q}: {a}" for q, a in symptoms.items()]) +
+        f"\n\n#### {'🏥 Medical History' if lang == 'English' else '🏥 病史'}:\n" +
+        "\n".join([f"🔹 {q}: {a}" for q, a in history.items()]) +
+        f"\n\n#### {'🧪 Lab Parameters' if lang == 'English' else '🧪 实验室参数'}:\n" +
+        "\n".join([f"🔹 {q}: {a}" for q, a in lab_params.items()])
     )
 
     # Get predictions from all models
@@ -41,22 +48,38 @@ def analyze_structured_inputs(symptoms, history, lab_params, lang):
         try:
             predictions = classifier(structured_text)
             probabilities = {LABEL_MAPPING[pred["label"]]: pred["score"] for pred in predictions}
-            results[model_name] = probabilities
+            most_likely = max(probabilities, key=probabilities.get)
+            explanation = MODEL_EXPLANATIONS[model_name] if lang == "中文" else MODEL_EXPLANATIONS_EN[model_name]
+            results[model_name] = {
+                "probabilities": probabilities,
+                "most_likely": most_likely,
+                "explanation": explanation
+            }
         except Exception as e:
             results[model_name] = f"Error: {e}"
 
     # Format the results for display
     formatted_results = [structured_text]  # Include the input string
-    for model_name, probabilities in results.items():
-        if isinstance(probabilities, dict):
+    for model_name, result in results.items():
+        if isinstance(result, dict):
             formatted_results.append(
-                f"### {model_name} Predictions:\n" +
-                "\n".join([f"{risk}: {prob:.2f}" for risk, prob in probabilities.items()])
+                f"### {'📊 ' + model_name + ' Predictions' if lang == 'English' else '📊 ' + model_name + ' 预测'}:\n" +
+                f"✅ {'Prediction' if lang == 'English' else '预测结果'}: {result['most_likely']}\n" +
+                f"📈 {'Probabilities' if lang == 'English' else '概率分布'}:\n" +
+                "\n".join([f"🔹 {risk}: {prob:.2f}" for risk, prob in result["probabilities"].items()]) +
+                f"\n\n📖 {'Model Explanation' if lang == 'English' else '模型解释'}:\n{result['explanation']}"
             )
         else:
-            formatted_results.append(f"### {model_name} Predictions:\n{probabilities}")
+            formatted_results.append(f"### {'📊 ' + model_name + ' Predictions' if lang == 'English' else '📊 ' + model_name + ' 预测'}:\n{result}")
 
     return "\n\n".join(formatted_results)
+
+# Model explanations in English
+MODEL_EXPLANATIONS_EN = {
+    "BioBERT": "BioBERT is a model trained specifically on biomedical text, suitable for analyzing medical-related content.",
+    "PubMedBERT": "PubMedBERT is a model trained on PubMed data, focusing on understanding biomedical literature.",
+    "ClinicalBERT": "ClinicalBERT is optimized for clinical text (e.g., electronic health records) and is suitable for analyzing patient-related clinical data."
+}
 
 # Create Gradio interface for each language
 def make_tab(lang):

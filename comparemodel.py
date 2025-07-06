@@ -3,9 +3,18 @@ from transformers import pipeline, AutoModelForSequenceClassification, AutoToken
 
 # Define label mapping
 LABEL_MAPPING = {
-    "LABEL_0": "低风险 / Low Risk",
-    "LABEL_1": "中风险 / Moderate Risk",
-    "LABEL_2": "高风险 / High Risk"
+    "LABEL_0": {
+        "中文": "低风险",
+        "English": "Low Risk"
+    },
+    "LABEL_1": {
+        "中文": "中风险",
+        "English": "Moderate Risk"
+    },
+    "LABEL_2": {
+        "中文": "高风险",
+        "English": "High Risk"
+    }
 }
 
 # Define the models
@@ -23,67 +32,137 @@ for model_name, model_path in MODELS.items():
     pipelines[model_name] = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
 # Define cardiovascular disease classification logic
-def classify_cardiovascular_disease(symptoms, history, lab_params):
+
+
+def classify_cardiovascular_disease(symptoms, history, lab_params, lang="中文"):
     diseases = []
     recommendations = []
 
-    # Hypertension
-    if lab_params.get("收缩压 (mmHg)", 0) > 180 or lab_params.get("舒张压 (mmHg)", 0) > 120:
-        diseases.append("高血压 (严重) / Hypertension (Severe)")
-        recommendations.append("这是紧急情况，请立即就医。")
-    elif lab_params.get("收缩压 (mmHg)", 0) > 160 or lab_params.get("舒张压 (mmHg)", 0) > 100:
-        diseases.append("高血压 (中度) / Hypertension (Moderate)")
-        recommendations.append("建议监测血压，减少盐分摄入，保持健康饮食，并咨询医生。")
-    elif lab_params.get("收缩压 (mmHg)", 0) > 140 or lab_params.get("舒张压 (mmHg)", 0) > 90:
-        diseases.append("高血压 (轻度) / Hypertension (Mild)")
-        recommendations.append("建议定期监测血压，保持健康生活方式。")
+    if lang == "English":
+        # Hypertension
+        if lab_params.get("Systolic BP (mmHg)", 0) > 180 or lab_params.get("Diastolic BP (mmHg)", 0) > 120:
+            diseases.append("Hypertension (Severe)")
+            recommendations.append(
+                "This is an emergency. Please seek medical attention immediately.")
+        elif lab_params.get("Systolic BP (mmHg)", 0) > 160 or lab_params.get("Diastolic BP (mmHg)", 0) > 100:
+            diseases.append("Hypertension (Moderate)")
+            recommendations.append(
+                "Monitor your blood pressure, reduce salt intake, maintain a healthy diet, and consult your doctor.")
+        elif lab_params.get("Systolic BP (mmHg)", 0) > 140 or lab_params.get("Diastolic BP (mmHg)", 0) > 90:
+            diseases.append("Hypertension (Mild)")
+            recommendations.append(
+                "Regularly monitor your blood pressure and maintain a healthy lifestyle.")
 
-    # Coronary Artery Disease (CAD)
-    if history.get("是否有心脏病家族史？", "否") == "是" or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
-        diseases.append("冠心病 / Coronary Artery Disease")
-        recommendations.append("建议进行心脏健康检查，避免高脂饮食，并保持适度运动。")
+        # Coronary Artery Disease (CAD)
+        if history.get("Family history of heart disease?", "No") == "Yes" or lab_params.get("LDL-C (mg/dL)", 0) > 130:
+            diseases.append("Coronary Artery Disease")
+            recommendations.append(
+                "Consider a cardiac health check, avoid high-fat diets, and maintain regular exercise.")
 
-    # Myocardial Infarction (MI)
-    if symptoms.get("胸痛是否在劳累时加重？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.04:
-        diseases.append("心肌梗塞 / Myocardial Infarction")
-        recommendations.append("这是紧急情况，请立即就医。")
+        # Myocardial Infarction (MI)
+        if symptoms.get("Chest pain triggered by exertion?", "No") == "Yes" and lab_params.get("Troponin I/T (ng/mL)", 0) > 0.04:
+            diseases.append("Myocardial Infarction")
+            recommendations.append(
+                "This is an emergency. Please seek medical attention immediately.")
 
-    # Hyperlipidemia
-    if lab_params.get("总胆固醇 (Total Cholesterol, mg/dL)", 0) > 200 or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
-        diseases.append("高脂血症 / Hyperlipidemia")
-        recommendations.append("建议减少高脂饮食，增加富含纤维的食物，并咨询医生。")
+        # Hyperlipidemia
+        if lab_params.get("Total Cholesterol (mg/dL)", 0) > 200 or lab_params.get("LDL-C (mg/dL)", 0) > 130:
+            diseases.append("Hyperlipidemia")
+            recommendations.append(
+                "Reduce high-fat foods, increase fiber-rich foods, and consult your doctor.")
 
-    # Heart Failure
-    if symptoms.get("是否呼吸困难？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.1:
-        diseases.append("心力衰竭 / Heart Failure")
-        recommendations.append("这是紧急情况，请立即就医。")
+        # Heart Failure
+        if symptoms.get("Shortness of breath?", "No") == "Yes" and lab_params.get("Troponin I/T (ng/mL)", 0) > 0.1:
+            diseases.append("Heart Failure")
+            recommendations.append(
+                "This is an emergency. Please seek medical attention immediately.")
 
-    # If no diseases are detected
-    if not diseases:
-        diseases.append("无明显心血管疾病风险 / No significant cardiovascular disease risk detected")
-        recommendations.append("保持健康的生活方式，定期进行健康检查。")
+        if not diseases:
+            diseases.append(
+                "No significant cardiovascular disease risk detected")
+            recommendations.append(
+                "Maintain a healthy lifestyle and have regular health check-ups.")
+
+    else:
+        # Hypertension
+        if lab_params.get("收缩压 (mmHg)", 0) > 180 or lab_params.get("舒张压 (mmHg)", 0) > 120:
+            diseases.append("高血压 (严重)")
+            recommendations.append("这是紧急情况，请立即就医。")
+        elif lab_params.get("收缩压 (mmHg)", 0) > 160 or lab_params.get("舒张压 (mmHg)", 0) > 100:
+            diseases.append("高血压 (中度)")
+            recommendations.append("建议监测血压，减少盐分摄入，保持健康饮食，并咨询医生。")
+        elif lab_params.get("收缩压 (mmHg)", 0) > 140 or lab_params.get("舒张压 (mmHg)", 0) > 90:
+            diseases.append("高血压 (轻度)")
+            recommendations.append("建议定期监测血压，保持健康生活方式。")
+
+        # Coronary Artery Disease (CAD)
+        if history.get("是否有心脏病家族史？", "否") == "是" or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
+            diseases.append("冠心病")
+            recommendations.append("建议进行心脏健康检查，避免高脂饮食，并保持适度运动。")
+
+        # Myocardial Infarction (MI)
+        if symptoms.get("胸痛是否在劳累时加重？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.04:
+            diseases.append("心肌梗塞")
+            recommendations.append("这是紧急情况，请立即就医。")
+
+        # Hyperlipidemia
+        if lab_params.get("总胆固醇 (Total Cholesterol, mg/dL)", 0) > 200 or lab_params.get("低密度脂蛋白 (LDL-C, mg/dL)", 0) > 130:
+            diseases.append("高脂血症")
+            recommendations.append("建议减少高脂饮食，增加富含纤维的食物，并咨询医生。")
+
+        # Heart Failure
+        if symptoms.get("是否呼吸困难？", "否") == "是" and lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.1:
+            diseases.append("心力衰竭")
+            recommendations.append("这是紧急情况，请立即就医。")
+
+        if not diseases:
+            diseases.append("无明显心血管疾病风险")
+            recommendations.append("保持健康的生活方式，定期进行健康检查。")
 
     return diseases, recommendations
 
 MODEL_EXPLANATIONS = {
-    "BioBERT": "BioBERT 是一个专门针对生物医学文本训练的模型，适用于分析医学相关的文本。",
-    "PubMedBERT": "PubMedBERT 是基于 PubMed 数据训练的模型，专注于生物医学文献的理解。",
-    "ClinicalBERT": "ClinicalBERT 是针对临床文本（如电子病历）优化的模型，适合分析患者相关的临床数据。"
+    "BioBERT": {
+        "中文": "BioBERT 是一个专门针对生物医学文本训练的模型，适用于分析医学相关的文本。",
+        "English": "BioBERT is a model pre-trained on biomedical text, suitable for analyzing medical-related content."
+    },
+    "PubMedBERT": {
+        "中文": "PubMedBERT 是基于 PubMed 数据训练的模型，专注于生物医学文献的理解。",
+        "English": "PubMedBERT is trained on PubMed data and focuses on understanding biomedical literature."
+    },
+    "ClinicalBERT": {
+        "中文": "ClinicalBERT 是针对临床文本（如电子病历）优化的模型，适合分析患者相关的临床数据。",
+        "English": "ClinicalBERT is optimized for clinical text (such as electronic medical records) and is suitable for analyzing patient-related clinical data."
+    }
 }
 
-def aggregate_model_predictions(results):
+
+def aggregate_model_predictions(results, lang="中文"):
     """
-    Aggregates probabilities from all models to determine the overall risk level.
+    Aggregates probabilities from all models to determine the overall risk level,
+    and outputs labels in the specified language.
     """
-    aggregated_probabilities = {"低风险 / Low Risk": 0, "中风险 / Moderate Risk": 0, "高风险 / High Risk": 0}
+    # Define risk labels based on language
+    if lang == "English":
+        risk_labels = ["Low Risk", "Moderate Risk", "High Risk"]
+    else:
+        risk_labels = ["低风险", "中风险", "高风险"]
+
+    # Initialize aggregated probabilities
+    aggregated_probabilities = {label: 0 for label in risk_labels}
     model_count = 0
 
     for model_result in results:
-        if isinstance(model_result, dict):  # Ensure valid results
+        if isinstance(model_result, dict) and "probabilities" in model_result:
             for risk, score in model_result["probabilities"].items():
-                if risk in aggregated_probabilities:  # Ensure the key exists
+                # Only aggregate if the risk label matches the current language
+                if risk in aggregated_probabilities:
                     aggregated_probabilities[risk] += score
             model_count += 1
+
+    # Avoid division by zero
+    if model_count == 0:
+        return None, aggregated_probabilities
 
     # Average the probabilities
     for risk in aggregated_probabilities:
@@ -95,31 +174,71 @@ def aggregate_model_predictions(results):
 
 
 def analyze_structured_inputs(symptoms, history, lab_params, lang):
-    # Replace None values in symptoms with "否" (No)
-    symptoms = {key: (value if value is not None else "否") for key, value in symptoms.items()}
+    # Replace None values in symptoms with "否"/"No"
+    if lang == "中文":
+        symptoms = {key: (value if value is not None else "否")
+                    for key, value in symptoms.items()}
+        section_user = "### 📝 用户输入"
+        section_symptoms = "#### 🩺 症状"
+        section_history = "#### 🏥 病史"
+        section_lab = "#### 🧪 实验室参数"
+        section_disease = "### 🩺 疾病分类"
+        section_recommend = "### 💡 建议"
+        section_model = "### 模型预测"
+        section_agg = "### 综合分析"
+        bullet = "🔹"
+        risk_label = "风险等级"
+        prob_label = "概率分布"
+        explain_label = "模型解释"
+        agg_risk = "综合风险等级"
+        agg_prob = "综合概率分布"
+        agg_explain = "模型预测可能存在差异，因为它们基于不同的数据集进行训练。建议根据综合分析结果采取行动，并在必要时咨询医生。"
+        history = {k: (v if v is not None else "否")
+                   for k, v in history.items()}
+    else:
+        symptoms = {key: (value if value is not None else "No")
+                    for key, value in symptoms.items()}
+        section_user = "### 📝 User Inputs"
+        section_symptoms = "#### 🩺 Symptoms"
+        section_history = "#### 🏥 Medical History"
+        section_lab = "#### 🧪 Lab Parameters"
+        section_disease = "### 🩺 Disease Classification"
+        section_recommend = "### 💡 Recommendations"
+        section_model = "### Model Predictions"
+        section_agg = "### Aggregated Analysis"
+        bullet = "🔹"
+        risk_label = "Risk Level"
+        prob_label = "Probability Distribution"
+        explain_label = "Model Explanation"
+        agg_risk = "Overall Risk Level"
+        agg_prob = "Aggregated Probability Distribution"
+        agg_explain = "Model predictions may differ because they are trained on different datasets. Please act according to the combined analysis and consult a doctor if necessary."
 
     # Combine structured inputs into a single text representation
     structured_text = (
-        f"### 📝 用户输入 / User Inputs:\n\n"
-        f"#### 🩺 症状 / Symptoms:\n" +
-        "\n".join([f"🔹 {q}: {a}" for q, a in symptoms.items()]) +
-        f"\n\n#### 🏥 病史 / Medical History:\n" +
-        "\n".join([f"🔹 {q}: {a}" for q, a in history.items()]) +
-        f"\n\n#### 🧪 实验室参数 / Lab Parameters:\n" +
-        "\n".join([f"🔹 {q}: {a}" for q, a in lab_params.items()])
+        f"{section_user}:\n\n"
+        f"{section_symptoms}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in symptoms.items()]) +
+        f"\n\n{section_history}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in history.items()]) +
+        f"\n\n{section_lab}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
     )
 
     # Classify cardiovascular diseases and get recommendations
-    diseases, recommendations = classify_cardiovascular_disease(symptoms, history, lab_params)
+    diseases, recommendations = classify_cardiovascular_disease(
+        symptoms, history, lab_params, lang)
 
     # Get predictions from all models
     model_results = []
     for model_name, classifier in pipelines.items():
         try:
             predictions = classifier(structured_text)
-            probabilities = {LABEL_MAPPING[pred["label"]]: pred["score"] for pred in predictions}
+            print(predictions)
+            probabilities = {
+                LABEL_MAPPING[pred["label"]][lang]: pred["score"] for pred in predictions}
             most_likely = max(probabilities, key=probabilities.get)
-            explanation = MODEL_EXPLANATIONS[model_name]
+            explanation = MODEL_EXPLANATIONS[model_name][lang]
             model_results.append({
                 "model_name": model_name,
                 "most_likely": most_likely,
@@ -133,41 +252,42 @@ def analyze_structured_inputs(symptoms, history, lab_params, lang):
             })
 
     # Aggregate predictions
-    aggregated_risk, aggregated_probabilities = aggregate_model_predictions(model_results)
+    aggregated_risk, aggregated_probabilities = aggregate_model_predictions(
+        model_results, lang)
 
     # Format the results for display
-    formatted_results = [structured_text]  # Include the input string
+    formatted_results = [structured_text]
     formatted_results.append(
-        f"### 🩺 疾病分类 / Disease Classification:\n" +
-        "\n".join([f"🔹 {disease}" for disease in diseases])
+        f"{section_disease}:\n" +
+        "\n".join([f"{bullet} {disease}" for disease in diseases])
     )
     formatted_results.append(
-        f"### 💡 建议 / Recommendations:\n" +
-        "\n".join([f"🔹 {recommendation}" for recommendation in recommendations])
+        f"{section_recommend}:\n" +
+        "\n".join(
+            [f"{bullet} {recommendation}" for recommendation in recommendations])
     )
 
     # Add model-specific results
-    formatted_results.append("### 模型预测 / Model Predictions:")
+    formatted_results.append(f"{section_model}:")
     for result in model_results:
         if "error" in result:
             formatted_results.append(f"- **{result['model_name']}**: Error: {result['error']}")
         else:
             formatted_results.append(
                 f"- **{result['model_name']}**:\n"
-                f"  **风险等级 / Risk Level:** {result['most_likely']}\n"
-                f"  **概率分布 / Probability Distribution:**\n" +
-                "\n".join([f"    🔹 {risk}: {score:.2f}" for risk, score in result["probabilities"].items()]) +
-                f"\n  **模型解释 / Model Explanation:** {result['explanation']}\n"
+                f"  **{risk_label}:** {result['most_likely']}\n"
+                f"  **{prob_label}:**\n" +
+                "\n".join([f"    {bullet} {risk}: {score:.2f}" for risk, score in result["probabilities"].items()]) +
+                f"\n  **{explain_label}:** {result['explanation']}\n"
             )
 
     # Add aggregated analysis
     formatted_results.append(
-        f"### 综合分析 / Aggregated Analysis:\n"
-        f"- **综合风险等级 / Overall Risk Level:** {aggregated_risk}\n"
-        f"- **综合概率分布 / Aggregated Probability Distribution:**\n" +
-        "\n".join([f"  🔹 {risk}: {score:.2f}" for risk, score in aggregated_probabilities.items()]) +
-        "\n- **说明 / Explanation:** "
-        "模型预测可能存在差异，因为它们基于不同的数据集进行训练。建议根据综合分析结果采取行动，并在必要时咨询医生。"
+        f"{section_agg}:\n"
+        f"- **{agg_risk}:** {aggregated_risk}\n"
+        f"- **{agg_prob}:**\n" +
+        "\n".join([f"  {bullet} {risk}: {score:.2f}" for risk, score in aggregated_probabilities.items()]) +
+        f"\n- **{('说明' if lang == '中文' else 'Explanation')}:** {agg_explain}"
     )
 
     return "\n\n".join(formatted_results)
@@ -248,8 +368,49 @@ def make_tab(lang):
         outputs=[output_text]
     )
 
+    # File upload section with its own submit and output
+    with gr.Group():
+        gr.Markdown("📄 上传文件" if lang ==
+                    "中文" else "📄 Upload Document")
+        # file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
+        #                      ".txt", ".pdf", ".docx"])
+    with gr.Row():
+        file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
+            ".txt", ".pdf", ".docx"], scale=2)
+    file_output = gr.Textbox(
+        label="文件分析结果" if lang == "中文" else "File Analysis Result")
+    file_submit = gr.Button("分析文件" if lang == "中文" else "Analyze File")
+    file_submit.click(
+        # fn=lambda file: process_file(file, lang),  # API calls in prcess_file
+        inputs=file_input,
+        outputs=file_output
+    )
+
+
     # Create Gradio interface
-    return gr.Column(fields + [submit_button, output_text])
+    return gr.Column(fields + [submit_button, output_text, gr.Markdown("---"), file_input, file_submit, file_output])
+
+
+def upload_file_interface(lang="English"):
+    if lang == "English":
+        label = "Upload File"
+        placeholder = "Drag and drop or click to upload your file"
+        output_label = "File Output"
+    else:
+        label = "上传文件"
+        placeholder = "拖拽或点击上传您的文件"
+        output_label = "文件输出"
+
+    with gr.Blocks() as demo:
+        gr.Markdown(
+            f"## {label} / {('上传文件' if lang == 'English' else 'Upload File')}")
+        file_input = gr.File(label=label, file_types=[
+                             ".txt", ".pdf", ".docx"], elem_id="file_upload")
+        output = gr.Textbox(label=output_label)
+        # API call in process_file function
+        # file_input.change(process_file, inputs=[file_input, gr.State(lang)], outputs=output)
+        gr.Markdown(f"*{placeholder}*")
+    return demo
 
 # Launch Gradio app
 if __name__ == "__main__":

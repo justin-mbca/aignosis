@@ -1,5 +1,14 @@
 import gradio as gr
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+import openai
+import docx
+import os
+from dotenv import load_dotenv
+from process_file import extract_key_value_pairs
+import json
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Define label mapping
 LABEL_MAPPING = {
@@ -381,7 +390,7 @@ def make_tab(lang):
         label="文件分析结果" if lang == "中文" else "File Analysis Result")
     file_submit = gr.Button("分析文件" if lang == "中文" else "Analyze File")
     file_submit.click(
-        # fn=lambda file: process_file(file, lang),  # API calls in prcess_file
+        fn=lambda file: process_file(file, lang),
         inputs=file_input,
         outputs=file_output
     )
@@ -411,6 +420,40 @@ def upload_file_interface(lang="English"):
         # file_input.change(process_file, inputs=[file_input, gr.State(lang)], outputs=output)
         gr.Markdown(f"*{placeholder}*")
     return demo
+
+def process_file(file, lang="English", mock=True):
+    """
+    Process the uploaded docx file and use OpenAI API to extract key-value pairs.
+    If mock is True, return a fixed JSON structure for testing.
+    """
+    if mock:
+        mock_data = {
+            "癌胚抗原": {"Value": "3.22", "Unit": "ng/ml", "Reference Range": "≤5"},
+            "甲胎蛋白": {"Value": "3.52", "Unit": "ng/ml", "Reference Range": "≤7"},
+            "念珠菌": {"Value": "未见", "Unit": "度"},
+            "淋球菌": {"Value": "未见", "Unit": "度"},
+            "高密度脂蛋白胆固醇": {"Value": "2.02", "Unit": "mmol", "Reference Range": ">1.04"},
+            "低密度脂蛋臼胆固醇": {"Value": "4.43", "Unit": "mmol", "Reference Range": "<3.37"},
+            "甘油三醋": {"Value": "1.25", "Unit": "mmol", "Reference Range": "<1.70"},
+            "总胆固酪": {"Value": "6.89", "Unit": "mmol", "Reference Range": "<5.18"},
+            "尿素": {"Value": "6.27", "Unit": "mmol", "Reference Range": "3.10-8.80"},
+            "总二氧化碳": {"Value": "26.8", "Unit": "mmol", "Reference Range": "22.0-29.0"},
+            "尿酸": {"Value": "236.0", "Unit": "µmol", "Reference Range": "155.0-357.0"},
+            "肌酐": {"Value": "63.0", "Unit": "µmol", "Reference Range": "41.0-81.0"}
+        }
+        return json.dumps(mock_data, indent=2, ensure_ascii=False)
+    if file is None:
+        return "No file uploaded."
+    try:
+        # Save uploaded file to a temp path
+        temp_path = file.name
+        result = extract_key_value_pairs(temp_path)
+        if result is None:
+            return "Could not extract key-value pairs. See logs for details."
+        # Pretty print JSON result
+        return json.dumps(result, indent=2, ensure_ascii=False)
+    except Exception as e:
+        return f"Error processing file: {e}"
 
 # Launch Gradio app
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ def classify_with_chunks(model_name, text):
     all_predictions = []
     for chunk in chunks:
         # ToDO: Remove truncation
-        preds = classifier(chunk, truncation=True, max_length=512)
+        preds = classifier(chunk, truncation=False)
         all_predictions.extend(preds)
     return all_predictions
 
@@ -274,13 +274,9 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
             file_section = "### 上传文件内容解析"
         else:
             file_section = "### File Content Analysis"
-        if isinstance(file_data, dict):
-            file_content = "\n".join([
-                f"{bullet} {k}: {v}" for k, v in file_data.items()
-            ])
-        else:
-            file_content = str(file_data)
-        structured_text += f"\n\n{file_section}:\n{file_content}"
+        file_mapping = map_uploaded_file(file_data)
+
+        structured_text += f"\n\n{file_section}:\n{dict(file_mapping)}"
 
 
     # Classify cardiovascular diseases and get recommendations
@@ -359,12 +355,16 @@ def make_tab(lang):
         "yes": "是" if lang == "中文" else "Yes",
         "no": "否" if lang == "中文" else "No",
         "nums": [
-            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
-            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
-            ("低密度脂蛋白 (LDL-C, mg/dL)" if lang == "中文" else "LDL-C (mg/dL)", 50, 200, 100),
-            ("高密度脂蛋白 (HDL-C, mg/dL)" if lang == "中文" else "HDL-C (mg/dL)", 20, 100, 50),
-            ("总胆固醇 (Total Cholesterol, mg/dL)" if lang == "中文" else "Total Cholesterol (mg/dL)", 100, 300, 200),
-            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang == "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
+            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 0, 220, None),
+            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 0, 120, None),
+            ("低密度脂蛋白 (LDL-C, mg/dL)" if lang ==
+             "中文" else "LDL-C (mg/dL)", 0, 200, None),
+            ("高密度脂蛋白 (HDL-C, mg/dL)" if lang ==
+             "中文" else "HDL-C (mg/dL)", 0, 100, None),
+            ("总胆固醇 (Total Cholesterol, mg/dL)" if lang ==
+             "中文" else "Total Cholesterol (mg/dL)", 0, 300, None),
+            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
+             "中文" else "Troponin I/T (ng/mL)", 0, 50, None)
         ]
     }
     yesno = [L["yes"], L["no"]]
@@ -392,20 +392,24 @@ def make_tab(lang):
     ]
 
     # Create Gradio components
+
     with gr.Group():
         gr.Markdown("### 🩺 症状 / Symptoms" if lang == "中文" else "### 🩺 Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptom_questions]
+        symptom_fields = [gr.Radio(choices=yesno, label=q, value=None)
+                          for q in symptom_questions]
 
     with gr.Group():
         gr.Markdown("### 🏥 病史 / Medical History" if lang == "中文" else "### 🏥 Medical History")
-        history_fields = [gr.Radio(choices=yesno, label=q) for q in history_questions]
+        history_fields = [gr.Radio(choices=yesno, label=q, value=None)
+                          for q in history_questions]
 
     with gr.Group():
         gr.Markdown("### 🧪 实验室参数 / Lab Parameters" if lang == "中文" else "### 🧪 Lab Parameters")
         lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=None)
             for q, minv, maxv, val in L["nums"]
         ]
+
 
     with gr.Group():
         label = "上传文件" if lang == "中文" else "Upload File"
@@ -426,7 +430,12 @@ def make_tab(lang):
         fn=lambda *inputs: analyze_structured_inputs(
             symptoms={q: inputs[i] for i, q in enumerate(symptom_questions)},
             history={q: inputs[i + len(symptom_questions)] for i, q in enumerate(history_questions)},
-            lab_params={lab_fields[i].label: inputs[i + len(symptom_questions) + len(history_questions)] for i in range(len(lab_fields))},
+            lab_params={
+                lab_fields[i].label: inputs[i +
+                                            len(symptom_questions) + len(history_questions)]
+                for i in range(len(lab_fields))
+                if inputs[i + len(symptom_questions) + len(history_questions)] not in (None, 0)
+            },
             file_output=inputs[-1],
             lang=lang
         ),
@@ -476,6 +485,27 @@ def process_file(file, lang="English", mock=True):
         return json.dumps(result, indent=2, ensure_ascii=False)
     except Exception as e:
         return f"Error processing file: {e}"
+
+
+def map_uploaded_file(data):
+    """
+    Map the uploaded file to the appropriate key-value pairs.
+    """
+    if data is None:
+        return "No content returned."
+    result = {}
+    for name, entry in data.items():
+        print(f'Processing entry: {entry}')
+        value = entry.get("Value") or entry.get("value")
+        unit = entry.get("Unit") or entry.get("unit")
+        if name and value and unit:
+            try:
+                value = float(value)
+            except Exception:
+                continue
+            result[f"{name} ({unit})"] = value
+    return result
+
 
 # Launch Gradio app
 if __name__ == "__main__":

@@ -35,10 +35,36 @@ MODELS = {
 
 # Load pipelines for each model
 pipelines = {}
+tokenizers = {}
 for model_name, model_path in MODELS.items():
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=3)
     pipelines[model_name] = pipeline("text-classification", model=model, tokenizer=tokenizer)
+    tokenizers[model_name] = tokenizer
+
+
+def split_text(text, tokenizer, max_length=512):
+    tokens = tokenizer.tokenize(text)
+    chunks = []
+    for i in range(0, len(tokens), max_length):
+        chunk_tokens = tokens[i:i+max_length]
+        chunk_text = tokenizer.convert_tokens_to_string(chunk_tokens)
+        chunks.append(chunk_text)
+    return chunks
+
+# Classify text using chunks to handle long inputs
+
+
+def classify_with_chunks(model_name, text):
+    classifier = pipelines[model_name]
+    tokenizer = tokenizers[model_name]
+    chunks = split_text(text, tokenizer)
+    all_predictions = []
+    for chunk in chunks:
+        # ToDO: Remove truncation
+        preds = classifier(chunk, truncation=True, max_length=512)
+        all_predictions.extend(preds)
+    return all_predictions
 
 # Define cardiovascular disease classification logic
 
@@ -182,7 +208,8 @@ def aggregate_model_predictions(results, lang="中文"):
     return most_likely, aggregated_probabilities
 
 
-def analyze_structured_inputs(symptoms, history, lab_params, lang):
+def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
+
     # Replace None values in symptoms with "否"/"No"
     if lang == "中文":
         symptoms = {key: (value if value is not None else "否")
@@ -234,15 +261,37 @@ def analyze_structured_inputs(symptoms, history, lab_params, lang):
         "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
     )
 
+    # Process file if provided
+    if file_output:
+        file_data = process_file(file_output, lang)
+        if isinstance(file_data, str):
+            try:
+                file_data = json.loads(file_data)
+            except json.JSONDecodeError:
+                return f"Error processing file: {file_data}"
+    if file_data:
+        if lang == "中文":
+            file_section = "### 上传文件内容解析"
+        else:
+            file_section = "### File Content Analysis"
+        if isinstance(file_data, dict):
+            file_content = "\n".join([
+                f"{bullet} {k}: {v}" for k, v in file_data.items()
+            ])
+        else:
+            file_content = str(file_data)
+        structured_text += f"\n\n{file_section}:\n{file_content}"
+
+
     # Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
 
     # Get predictions from all models
     model_results = []
-    for model_name, classifier in pipelines.items():
+    for model_name in pipelines:
         try:
-            predictions = classifier(structured_text)
+            predictions = classify_with_chunks(model_name, structured_text)
             print(predictions)
             probabilities = {
                 LABEL_MAPPING[pred["label"]][lang]: pred["score"] for pred in predictions}
@@ -358,11 +407,18 @@ def make_tab(lang):
             for q, minv, maxv, val in L["nums"]
         ]
 
+    with gr.Group():
+        label = "上传文件" if lang == "中文" else "Upload File"
+        gr.Markdown(label)
+        file_input = gr.File(label=label, file_types=[
+                             ".txt", ".pdf", ".docx"], elem_id="file_upload")
+
     # Combine all fields
-    fields = symptom_fields + history_fields + lab_fields
+    fields = symptom_fields + history_fields + lab_fields + [file_input]
 
     # Output and submit button
     output_text = gr.Textbox(label="结果 / Results" if lang == "中文" else "Results")
+    reset_button = gr.Button("重置" if lang == "中文" else "Reset")
     submit_button = gr.Button("提交 / Submit" if lang == "中文" else "Submit")
 
     # Submit button functionality
@@ -371,55 +427,21 @@ def make_tab(lang):
             symptoms={q: inputs[i] for i, q in enumerate(symptom_questions)},
             history={q: inputs[i + len(symptom_questions)] for i, q in enumerate(history_questions)},
             lab_params={lab_fields[i].label: inputs[i + len(symptom_questions) + len(history_questions)] for i in range(len(lab_fields))},
+            file_output=inputs[-1],
             lang=lang
         ),
         inputs=fields,
         outputs=[output_text]
     )
 
-    # File upload section with its own submit and output
-    with gr.Group():
-        gr.Markdown("📄 上传文件" if lang ==
-                    "中文" else "📄 Upload Document")
-        # file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
-        #                      ".txt", ".pdf", ".docx"])
-    with gr.Row():
-        file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
-            ".txt", ".pdf", ".docx"], scale=2)
-    file_output = gr.Textbox(
-        label="文件分析结果" if lang == "中文" else "File Analysis Result")
-    file_submit = gr.Button("分析文件" if lang == "中文" else "Analyze File")
-    file_submit.click(
-        fn=lambda file: process_file(file, lang),
-        inputs=file_input,
-        outputs=file_output
+    reset_button.click(
+        fn=lambda: [None] * len(fields),  # 清空所有输入
+        inputs=None,
+        outputs=fields
     )
 
-
     # Create Gradio interface
-    return gr.Column(fields + [submit_button, output_text, gr.Markdown("---"), file_input, file_submit, file_output])
-
-
-def upload_file_interface(lang="English"):
-    if lang == "English":
-        label = "Upload File"
-        placeholder = "Drag and drop or click to upload your file"
-        output_label = "File Output"
-    else:
-        label = "上传文件"
-        placeholder = "拖拽或点击上传您的文件"
-        output_label = "文件输出"
-
-    with gr.Blocks() as demo:
-        gr.Markdown(
-            f"## {label} / {('上传文件' if lang == 'English' else 'Upload File')}")
-        file_input = gr.File(label=label, file_types=[
-                             ".txt", ".pdf", ".docx"], elem_id="file_upload")
-        output = gr.Textbox(label=output_label)
-        # API call in process_file function
-        # file_input.change(process_file, inputs=[file_input, gr.State(lang)], outputs=output)
-        gr.Markdown(f"*{placeholder}*")
-    return demo
+    return gr.Column(fields + [submit_button, output_text, reset_button, gr.Markdown("---")])
 
 def process_file(file, lang="English", mock=True):
     """

@@ -53,6 +53,7 @@ def extract_key_value_pairs(docx_path):
         print("⚠️ Warning: Could not parse response as JSON. Here's the raw response:\n")
         print(reply)
         return None
+    # TODO: only return default values
     return data
 
 # Example usage

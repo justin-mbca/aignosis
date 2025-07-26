@@ -254,12 +254,29 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         else:
             file_section = "### File Content Analysis"
         file_mapping = map_uploaded_file(file_data)
-
         print(f"File mapping: {file_mapping}")
 
-        structured_text += f"\n\n{file_section}:\n{dict(file_mapping)}"
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
 
+    # TODO: If file_mapping exist, compare file_mapping with lab_params and use lab_params if overlapping values exist
 
+    # Combine structured inputs into a single text representation
+    structured_text = (
+        f"{section_user}:\n\n"
+        f"{section_symptoms}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in symptoms.items()]) +
+        f"\n\n{section_history}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in history.items()]) +
+        f"\n\n{section_lab}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
+    )
+
+    if file_mapping:
+        structured_text += f"\n{file_section}:\n{dict(file_mapping)}" 
+
+    print(f"Structured text for analysis: {structured_text}")
     # Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
@@ -336,16 +353,16 @@ def make_tab(lang):
         "yes": "是" if lang == "中文" else "Yes",
         "no": "否" if lang == "中文" else "No",
         "nums": [
-            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 0, 220, None),
-            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 0, 120, None),
+            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
+            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
             ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
-             "中文" else "LDL-C (mg/dL)", 0, 200, None),
+             "中文" else "LDL-C (mg/dL)", 50, 200, 100),
             ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
-             "中文" else "HDL-C (mg/dL)", 0, 100, None),
+             "中文" else "HDL-C (mg/dL)", 20, 100, 50),
             ("总胆固酯 (mg/dL)" if lang ==
-             "中文" else "Total Cholesterol (mg/dL)", 0, 300, None),
+             "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
             ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
-             "中文" else "Troponin I/T (ng/mL)", 0, 50, None)
+             "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
         ]
     }
     yesno = [L["yes"], L["no"]]
@@ -387,7 +404,7 @@ def make_tab(lang):
     with gr.Group():
         gr.Markdown("### 🧪 实验室参数 / Lab Parameters" if lang == "中文" else "### 🧪 Lab Parameters")
         lab_fields = [
-            gr.Number(label=q, minimum=minv, maximum=maxv, value=None)
+            gr.Number(label=q, minimum=minv, maximum=maxv, value=val)
             for q, minv, maxv, val in L["nums"]
         ]
 
@@ -438,6 +455,7 @@ def process_file(file, lang="English", mock=True):
     Process the uploaded docx file and use OpenAI API to extract key-value pairs.
     If mock is True, return a fixed JSON structure for testing.
     """
+    # TODO: Implement English mock data and return based on Lang
     if mock:
         mock_data = {
             "癌胚抗原 (CEA)": "3.22 ng/ml (≤5)",

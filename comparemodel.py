@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from process_file import extract_key_value_pairs
 import json
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -225,6 +226,9 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         agg_prob = "Aggregated Probability Distribution"
         agg_explain = "Model predictions may differ because they are trained on different datasets. Please act according to the combined analysis and consult a doctor if necessary."
 
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
     # Combine structured inputs into a single text representation
     structured_text = (
         f"{section_user}:\n\n"
@@ -250,6 +254,8 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         else:
             file_section = "### File Content Analysis"
         file_mapping = map_uploaded_file(file_data)
+
+        print(f"File mapping: {file_mapping}")
 
         structured_text += f"\n\n{file_section}:\n{dict(file_mapping)}"
 
@@ -332,11 +338,11 @@ def make_tab(lang):
         "nums": [
             ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 0, 220, None),
             ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 0, 120, None),
-            ("低密度脂蛋白 (LDL-C, mg/dL)" if lang ==
+            ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
              "中文" else "LDL-C (mg/dL)", 0, 200, None),
-            ("高密度脂蛋白 (HDL-C, mg/dL)" if lang ==
+            ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
              "中文" else "HDL-C (mg/dL)", 0, 100, None),
-            ("总胆固醇 (Total Cholesterol, mg/dL)" if lang ==
+            ("总胆固酯 (mg/dL)" if lang ==
              "中文" else "Total Cholesterol (mg/dL)", 0, 300, None),
             ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
              "中文" else "Troponin I/T (ng/mL)", 0, 50, None)
@@ -434,18 +440,16 @@ def process_file(file, lang="English", mock=True):
     """
     if mock:
         mock_data = {
-            "癌胚抗原": {"Value": "3.22", "Unit": "ng/ml", "Reference Range": "≤5"},
-            "甲胎蛋白": {"Value": "3.52", "Unit": "ng/ml", "Reference Range": "≤7"},
-            "念珠菌": {"Value": "未见", "Unit": "度"},
-            "淋球菌": {"Value": "未见", "Unit": "度"},
-            "高密度脂蛋白胆固醇": {"Value": "2.02", "Unit": "mmol", "Reference Range": ">1.04"},
-            "低密度脂蛋臼胆固醇": {"Value": "4.43", "Unit": "mmol", "Reference Range": "<3.37"},
-            "甘油三醋": {"Value": "1.25", "Unit": "mmol", "Reference Range": "<1.70"},
-            "总胆固酪": {"Value": "6.89", "Unit": "mmol", "Reference Range": "<5.18"},
-            "尿素": {"Value": "6.27", "Unit": "mmol", "Reference Range": "3.10-8.80"},
-            "总二氧化碳": {"Value": "26.8", "Unit": "mmol", "Reference Range": "22.0-29.0"},
-            "尿酸": {"Value": "236.0", "Unit": "µmol", "Reference Range": "155.0-357.0"},
-            "肌酐": {"Value": "63.0", "Unit": "µmol", "Reference Range": "41.0-81.0"}
+            "癌胚抗原 (CEA)": "3.22 ng/ml (≤5)",
+            "甲胎蛋白": "3.52 ng/ml (≤7)",
+            "高密度脂蛋白胆固醇": "78.15 mg/dL (>40)",
+            "低密度脂蛋白胆固醇": "171.4 mg/dL (<130) ↑",
+            "甘油三酯": "110.7 mg/dL (<150)",
+            "总胆固酯": "266.5 mg/dL (<200) ↑",
+            "尿素": "37.64 mg/dL (18.63–52.85)",
+            "总二氧化碳": "26.8 mEq/L (22.0–29.0)",
+            "尿酸": "3.97 mg/dL (2.61–6.00)",
+            "肌酐": "0.71 mg/dL (0.46–0.92)"
         }
         return json.dumps(mock_data, indent=2, ensure_ascii=False)
     if file is None:
@@ -465,20 +469,21 @@ def process_file(file, lang="English", mock=True):
 def map_uploaded_file(data):
     """
     Map the uploaded file to the appropriate key-value pairs.
+    支持 value 为 "数值 单位 (参考范围)" 的字符串格式。
     """
     if data is None:
         return "No content returned."
     result = {}
     for name, entry in data.items():
-        print(f'Processing entry: {entry}')
-        value = entry.get("Value") or entry.get("value")
-        unit = entry.get("Unit") or entry.get("unit")
-        if name and value and unit:
+        # 用正则提取数值和单位
+        match = re.match(r"([-\d.]+)\s*([a-zA-Zµ/%]+)", entry)
+        if match:
+            value_str, unit = match.groups()
             try:
-                value = float(value)
+                value = float(value_str)
+                result[f"{name} ({unit})"] = value
             except Exception:
                 continue
-            result[f"{name} ({unit})"] = value
     return result
 
 

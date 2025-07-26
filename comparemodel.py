@@ -43,29 +43,6 @@ for model_name, model_path in MODELS.items():
     tokenizers[model_name] = tokenizer
 
 
-def split_text(text, tokenizer, max_length=512):
-    tokens = tokenizer.tokenize(text)
-    chunks = []
-    for i in range(0, len(tokens), max_length):
-        chunk_tokens = tokens[i:i+max_length]
-        chunk_text = tokenizer.convert_tokens_to_string(chunk_tokens)
-        chunks.append(chunk_text)
-    return chunks
-
-# Classify text using chunks to handle long inputs
-
-
-def classify_with_chunks(model_name, text):
-    classifier = pipelines[model_name]
-    tokenizer = tokenizers[model_name]
-    chunks = split_text(text, tokenizer)
-    all_predictions = []
-    for chunk in chunks:
-        # ToDO: Remove truncation
-        preds = classifier(chunk, truncation=False)
-        all_predictions.extend(preds)
-    return all_predictions
-
 # Define cardiovascular disease classification logic
 
 
@@ -285,9 +262,9 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
 
     # Get predictions from all models
     model_results = []
-    for model_name in pipelines:
+    for model_name, classifier in pipelines.items():
         try:
-            predictions = classify_with_chunks(model_name, structured_text)
+            predictions = classifier(structured_text)
             print(predictions)
             probabilities = {
                 LABEL_MAPPING[pred["label"]][lang]: pred["score"] for pred in predictions}

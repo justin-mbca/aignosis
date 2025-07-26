@@ -18,18 +18,20 @@ def generate_prompt(text):
     return f"""
 You are a medical document analysis assistant.
 
-Given the following health checkup document text:
-
-\"\"\"{text}\"\"\"
+Given the following health checkup document text::\"\"\"{text}\"\"\"
 
 Extract all meaningful medical key-value pairs, such as lab test names and their corresponding values, and return them in flat JSON format like:
 
-{{
+{
   "Test Name 1": "Value 1",
   "Test Name 2": "Value 2"
-}}
+}
 
-Include units and reference ranges where applicable. Do not group by section.
+Include units and reference ranges where applicable.
+Do not group by section.
+Keep test names and values in original language (e.g., Chinese).
+Convert all lab values and reference ranges to U.S. standard units (e.g., mg/dL, ng/mL, mEq/L).
+For example: convert cholesterol from mmol/L to mg/dL, creatinine from µmol/L to mg/dL, etc.
 """
 
 # Call OpenAI API

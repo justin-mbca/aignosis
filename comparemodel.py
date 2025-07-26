@@ -35,13 +35,11 @@ MODELS = {
 
 # Load pipelines for each model
 pipelines = {}
-tokenizers = {}
 for model_name, model_path in MODELS.items():
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=3)
-    pipelines[model_name] = pipeline("text-classification", model=model, tokenizer=tokenizer)
-    tokenizers[model_name] = tokenizer
-
+    pipelines[model_name] = pipeline(
+        "text-classification", model=model, tokenizer=tokenizer)
 
 # Define cardiovascular disease classification logic
 

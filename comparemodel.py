@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from process_file import extract_key_value_pairs
 import json
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -38,7 +39,8 @@ pipelines = {}
 for model_name, model_path in MODELS.items():
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=3)
-    pipelines[model_name] = pipeline("text-classification", model=model, tokenizer=tokenizer)
+    pipelines[model_name] = pipeline(
+        "text-classification", model=model, tokenizer=tokenizer)
 
 # Define cardiovascular disease classification logic
 
@@ -182,7 +184,8 @@ def aggregate_model_predictions(results, lang="中文"):
     return most_likely, aggregated_probabilities
 
 
-def analyze_structured_inputs(symptoms, history, lab_params, lang):
+def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
+
     # Replace None values in symptoms with "否"/"No"
     if lang == "中文":
         symptoms = {key: (value if value is not None else "否")
@@ -223,6 +226,9 @@ def analyze_structured_inputs(symptoms, history, lab_params, lang):
         agg_prob = "Aggregated Probability Distribution"
         agg_explain = "Model predictions may differ because they are trained on different datasets. Please act according to the combined analysis and consult a doctor if necessary."
 
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
     # Combine structured inputs into a single text representation
     structured_text = (
         f"{section_user}:\n\n"
@@ -234,6 +240,43 @@ def analyze_structured_inputs(symptoms, history, lab_params, lang):
         "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
     )
 
+    # Process file if provided
+    if file_output:
+        file_data = process_file(file_output, lang)
+        if isinstance(file_data, str):
+            try:
+                file_data = json.loads(file_data)
+            except json.JSONDecodeError:
+                return f"Error processing file: {file_data}"
+    if file_data:
+        if lang == "中文":
+            file_section = "### 上传文件内容解析"
+        else:
+            file_section = "### File Content Analysis"
+        file_mapping = map_uploaded_file(file_data)
+        print(f"File mapping: {file_mapping}")
+
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
+
+    # TODO: If file_mapping exist, compare file_mapping with lab_params and use lab_params if overlapping values exist
+
+    # Combine structured inputs into a single text representation
+    structured_text = (
+        f"{section_user}:\n\n"
+        f"{section_symptoms}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in symptoms.items()]) +
+        f"\n\n{section_history}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in history.items()]) +
+        f"\n\n{section_lab}:\n" +
+        "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
+    )
+
+    if file_mapping:
+        structured_text += f"\n{file_section}:\n{dict(file_mapping)}" 
+
+    print(f"Structured text for analysis: {structured_text}")
     # Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
@@ -312,10 +355,14 @@ def make_tab(lang):
         "nums": [
             ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
             ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
-            ("低密度脂蛋白 (LDL-C, mg/dL)" if lang == "中文" else "LDL-C (mg/dL)", 50, 200, 100),
-            ("高密度脂蛋白 (HDL-C, mg/dL)" if lang == "中文" else "HDL-C (mg/dL)", 20, 100, 50),
-            ("总胆固醇 (Total Cholesterol, mg/dL)" if lang == "中文" else "Total Cholesterol (mg/dL)", 100, 300, 200),
-            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang == "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
+            ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
+             "中文" else "LDL-C (mg/dL)", 50, 200, 100),
+            ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
+             "中文" else "HDL-C (mg/dL)", 20, 100, 50),
+            ("总胆固酯 (mg/dL)" if lang ==
+             "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
+            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
+             "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
         ]
     }
     yesno = [L["yes"], L["no"]]
@@ -343,13 +390,16 @@ def make_tab(lang):
     ]
 
     # Create Gradio components
+
     with gr.Group():
         gr.Markdown("### 🩺 症状 / Symptoms" if lang == "中文" else "### 🩺 Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, label=q) for q in symptom_questions]
+        symptom_fields = [gr.Radio(choices=yesno, label=q, value=None)
+                          for q in symptom_questions]
 
     with gr.Group():
         gr.Markdown("### 🏥 病史 / Medical History" if lang == "中文" else "### 🏥 Medical History")
-        history_fields = [gr.Radio(choices=yesno, label=q) for q in history_questions]
+        history_fields = [gr.Radio(choices=yesno, label=q, value=None)
+                          for q in history_questions]
 
     with gr.Group():
         gr.Markdown("### 🧪 实验室参数 / Lab Parameters" if lang == "中文" else "### 🧪 Lab Parameters")
@@ -358,11 +408,19 @@ def make_tab(lang):
             for q, minv, maxv, val in L["nums"]
         ]
 
+
+    with gr.Group():
+        label = "上传文件" if lang == "中文" else "Upload File"
+        gr.Markdown(label)
+        file_input = gr.File(label=label, file_types=[
+                             ".txt", ".pdf", ".docx"], elem_id="file_upload")
+
     # Combine all fields
-    fields = symptom_fields + history_fields + lab_fields
+    fields = symptom_fields + history_fields + lab_fields + [file_input]
 
     # Output and submit button
     output_text = gr.Textbox(label="结果 / Results" if lang == "中文" else "Results")
+    reset_button = gr.Button("重置" if lang == "中文" else "Reset")
     submit_button = gr.Button("提交 / Submit" if lang == "中文" else "Submit")
 
     # Submit button functionality
@@ -370,76 +428,46 @@ def make_tab(lang):
         fn=lambda *inputs: analyze_structured_inputs(
             symptoms={q: inputs[i] for i, q in enumerate(symptom_questions)},
             history={q: inputs[i + len(symptom_questions)] for i, q in enumerate(history_questions)},
-            lab_params={lab_fields[i].label: inputs[i + len(symptom_questions) + len(history_questions)] for i in range(len(lab_fields))},
+            lab_params={
+                lab_fields[i].label: inputs[i +
+                                            len(symptom_questions) + len(history_questions)]
+                for i in range(len(lab_fields))
+                if inputs[i + len(symptom_questions) + len(history_questions)] not in (None, 0)
+            },
+            file_output=inputs[-1],
             lang=lang
         ),
         inputs=fields,
         outputs=[output_text]
     )
 
-    # File upload section with its own submit and output
-    with gr.Group():
-        gr.Markdown("📄 上传文件" if lang ==
-                    "中文" else "📄 Upload Document")
-        # file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
-        #                      ".txt", ".pdf", ".docx"])
-    with gr.Row():
-        file_input = gr.File(label="上传文件" if lang == "中文" else "Upload File", file_types=[
-            ".txt", ".pdf", ".docx"], scale=2)
-    file_output = gr.Textbox(
-        label="文件分析结果" if lang == "中文" else "File Analysis Result")
-    file_submit = gr.Button("分析文件" if lang == "中文" else "Analyze File")
-    file_submit.click(
-        fn=lambda file: process_file(file, lang),
-        inputs=file_input,
-        outputs=file_output
+    reset_button.click(
+        fn=lambda: [None] * len(fields),  # 清空所有输入
+        inputs=None,
+        outputs=fields
     )
 
-
     # Create Gradio interface
-    return gr.Column(fields + [submit_button, output_text, gr.Markdown("---"), file_input, file_submit, file_output])
-
-
-def upload_file_interface(lang="English"):
-    if lang == "English":
-        label = "Upload File"
-        placeholder = "Drag and drop or click to upload your file"
-        output_label = "File Output"
-    else:
-        label = "上传文件"
-        placeholder = "拖拽或点击上传您的文件"
-        output_label = "文件输出"
-
-    with gr.Blocks() as demo:
-        gr.Markdown(
-            f"## {label} / {('上传文件' if lang == 'English' else 'Upload File')}")
-        file_input = gr.File(label=label, file_types=[
-                             ".txt", ".pdf", ".docx"], elem_id="file_upload")
-        output = gr.Textbox(label=output_label)
-        # API call in process_file function
-        # file_input.change(process_file, inputs=[file_input, gr.State(lang)], outputs=output)
-        gr.Markdown(f"*{placeholder}*")
-    return demo
+    return gr.Column(fields + [submit_button, output_text, reset_button, gr.Markdown("---")])
 
 def process_file(file, lang="English", mock=True):
     """
     Process the uploaded docx file and use OpenAI API to extract key-value pairs.
     If mock is True, return a fixed JSON structure for testing.
     """
+    # TODO: Implement English mock data and return based on Lang
     if mock:
         mock_data = {
-            "癌胚抗原": {"Value": "3.22", "Unit": "ng/ml", "Reference Range": "≤5"},
-            "甲胎蛋白": {"Value": "3.52", "Unit": "ng/ml", "Reference Range": "≤7"},
-            "念珠菌": {"Value": "未见", "Unit": "度"},
-            "淋球菌": {"Value": "未见", "Unit": "度"},
-            "高密度脂蛋白胆固醇": {"Value": "2.02", "Unit": "mmol", "Reference Range": ">1.04"},
-            "低密度脂蛋臼胆固醇": {"Value": "4.43", "Unit": "mmol", "Reference Range": "<3.37"},
-            "甘油三醋": {"Value": "1.25", "Unit": "mmol", "Reference Range": "<1.70"},
-            "总胆固酪": {"Value": "6.89", "Unit": "mmol", "Reference Range": "<5.18"},
-            "尿素": {"Value": "6.27", "Unit": "mmol", "Reference Range": "3.10-8.80"},
-            "总二氧化碳": {"Value": "26.8", "Unit": "mmol", "Reference Range": "22.0-29.0"},
-            "尿酸": {"Value": "236.0", "Unit": "µmol", "Reference Range": "155.0-357.0"},
-            "肌酐": {"Value": "63.0", "Unit": "µmol", "Reference Range": "41.0-81.0"}
+            "癌胚抗原 (CEA)": "3.22 ng/ml (≤5)",
+            "甲胎蛋白": "3.52 ng/ml (≤7)",
+            "高密度脂蛋白胆固醇": "78.15 mg/dL (>40)",
+            "低密度脂蛋白胆固醇": "171.4 mg/dL (<130) ↑",
+            "甘油三酯": "110.7 mg/dL (<150)",
+            "总胆固酯": "266.5 mg/dL (<200) ↑",
+            "尿素": "37.64 mg/dL (18.63–52.85)",
+            "总二氧化碳": "26.8 mEq/L (22.0–29.0)",
+            "尿酸": "3.97 mg/dL (2.61–6.00)",
+            "肌酐": "0.71 mg/dL (0.46–0.92)"
         }
         return json.dumps(mock_data, indent=2, ensure_ascii=False)
     if file is None:
@@ -454,6 +482,28 @@ def process_file(file, lang="English", mock=True):
         return json.dumps(result, indent=2, ensure_ascii=False)
     except Exception as e:
         return f"Error processing file: {e}"
+
+
+def map_uploaded_file(data):
+    """
+    Map the uploaded file to the appropriate key-value pairs.
+    支持 value 为 "数值 单位 (参考范围)" 的字符串格式。
+    """
+    if data is None:
+        return "No content returned."
+    result = {}
+    for name, entry in data.items():
+        # 用正则提取数值和单位
+        match = re.match(r"([-\d.]+)\s*([a-zA-Zµ/%]+)", entry)
+        if match:
+            value_str, unit = match.groups()
+            try:
+                value = float(value_str)
+                result[f"{name} ({unit})"] = value
+            except Exception:
+                continue
+    return result
+
 
 # Launch Gradio app
 if __name__ == "__main__":

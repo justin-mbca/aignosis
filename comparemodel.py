@@ -183,54 +183,24 @@ def aggregate_model_predictions(results, lang="中文"):
     most_likely = max(aggregated_probabilities, key=aggregated_probabilities.get)
     return most_likely, aggregated_probabilities
 
-
-def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
-
-    # Replace None values in symptoms with "否"/"No"
+def generate_summary_text(symptoms, history, lab_params, lang):
+    """
+    Generate a summary text from structured inputs for model analysis.
+    """
     if lang == "中文":
-        symptoms = {key: (value if value is not None else "否")
-                    for key, value in symptoms.items()}
         section_user = "### 📝 用户输入"
         section_symptoms = "#### 🩺 症状"
         section_history = "#### 🏥 病史"
         section_lab = "#### 🧪 实验室参数"
-        section_disease = "### 🩺 疾病分类"
-        section_recommend = "### 💡 建议"
-        section_model = "### 模型预测"
-        section_agg = "### 综合分析"
         bullet = "🔹"
-        risk_label = "风险等级"
-        prob_label = "概率分布"
-        explain_label = "模型解释"
-        agg_risk = "综合风险等级"
-        agg_prob = "综合概率分布"
-        agg_explain = "模型预测可能存在差异，因为它们基于不同的数据集进行训练。建议根据综合分析结果采取行动，并在必要时咨询医生。"
-        history = {k: (v if v is not None else "否")
-                   for k, v in history.items()}
     else:
-        symptoms = {key: (value if value is not None else "No")
-                    for key, value in symptoms.items()}
         section_user = "### 📝 User Inputs"
         section_symptoms = "#### 🩺 Symptoms"
         section_history = "#### 🏥 Medical History"
         section_lab = "#### 🧪 Lab Parameters"
-        section_disease = "### 🩺 Disease Classification"
-        section_recommend = "### 💡 Recommendations"
-        section_model = "### Model Predictions"
-        section_agg = "### Aggregated Analysis"
         bullet = "🔹"
-        risk_label = "Risk Level"
-        prob_label = "Probability Distribution"
-        explain_label = "Model Explanation"
-        agg_risk = "Overall Risk Level"
-        agg_prob = "Aggregated Probability Distribution"
-        agg_explain = "Model predictions may differ because they are trained on different datasets. Please act according to the combined analysis and consult a doctor if necessary."
 
-    print(f"Processing symptoms: {symptoms}")
-    print(f"Processing history: {history}")
-    print(f"Processing lab parameters: {lab_params}")
-    # Combine structured inputs into a single text representation
-    structured_text = (
+    summary = (
         f"{section_user}:\n\n"
         f"{section_symptoms}:\n" +
         "\n".join([f"{bullet} {q}: {a}" for q, a in symptoms.items()]) +
@@ -239,8 +209,96 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         f"\n\n{section_lab}:\n" +
         "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
     )
+    return summary
 
-    # Process file if provided
+def generate_recommendations(final_risk, heart_score, lang):
+    recommendations = []
+    if lang == "中文":
+        if final_risk == "高风险":
+            recommendations.append("这是紧急情况，请立即就医。")
+        elif final_risk == "中风险":
+            recommendations.append("建议尽快咨询医生，进一步检查心脏健康。")
+        else:
+            recommendations.append("风险较低，建议定期体检，保持健康生活方式。")
+        if heart_score >= 4:
+            recommendations.append(f"HEART评分较高（{heart_score}分），请高度重视心脏健康。")
+    else:
+        if final_risk == "High Risk":
+            recommendations.append("This is an emergency. Please seek medical attention immediately.")
+        elif final_risk == "Moderate Risk":
+            recommendations.append("It is recommended to consult a doctor soon for further cardiac evaluation.")
+        else:
+            recommendations.append("Risk is low. Regular check-ups and a healthy lifestyle are recommended.")
+        if heart_score >= 4:
+            recommendations.append(f"HEART score is high ({heart_score} points). Please pay close attention to your heart health.")
+    return recommendations
+
+def generate_clinical_alerts(symptoms, history, lab_params, lang):
+    alerts = []
+    # Example: Troponin alert
+    if lang == "中文":
+        if lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.04:
+            alerts.append("肌钙蛋白升高，提示心肌损伤风险。")
+        if lab_params.get("收缩压 (mmHg)", 0) > 180 or lab_params.get("舒张压 (mmHg)", 0) > 120:
+            alerts.append("血压极高，存在高血压急症风险。")
+        if symptoms.get("胸痛是否在劳累时加重？", "否") == "是":
+            alerts.append("存在心绞痛症状，请注意心脏健康。")
+    else:
+        if lab_params.get("Troponin I/T (ng/mL)", 0) > 0.04:
+            alerts.append("Elevated troponin indicates risk of myocardial injury.")
+        if lab_params.get("Systolic BP (mmHg)", 0) > 180 or lab_params.get("Diastolic BP (mmHg)", 0) > 120:
+            alerts.append("Extremely high blood pressure, risk of hypertensive emergency.")
+        if symptoms.get("Is chest pain aggravated by exertion?", "No") == "Yes":
+            alerts.append("Angina symptoms present, please monitor heart health.")
+    return alerts
+
+def calculate_heart_score(symptoms, history, lab_params, lang):
+    """
+    Calculate a simplified HEART score based on inputs.
+    Returns (score, risk_level).
+    """
+    score = 0
+
+    # Example scoring logic (customize for your needs)
+    # History
+    if history.get("是否有心脏病家族史？", "否") == "是" or history.get("Family history of heart disease?", "No") == "Yes":
+        score += 1
+    if history.get("是否患有高血压？", "否") == "是" or history.get("Do you have hypertension?", "No") == "Yes":
+        score += 1
+    if history.get("是否患糖尿病？", "否") == "是" or history.get("Do you have diabetes?", "No") == "Yes":
+        score += 1
+
+    # Symptoms
+    if symptoms.get("胸痛是否在劳累时加重？", "否") == "是" or symptoms.get("Is chest pain aggravated by exertion?", "No") == "Yes":
+        score += 2
+    if symptoms.get("是否呼吸困难？", "否") == "是" or symptoms.get("Is there shortness of breath?", "No") == "Yes":
+        score += 1
+
+    # Lab parameters (example: Troponin)
+    if lab_params.get("肌钙蛋白 (Troponin I/T, ng/mL)", 0) > 0.04 or lab_params.get("Troponin I/T (ng/mL)", 0) > 0.04:
+        score += 2
+
+    # Risk level mapping
+    if score >= 4:
+        risk = "高风险" if lang == "中文" else "High Risk"
+    elif score >= 2:
+        risk = "中风险" if lang == "中文" else "Moderate Risk"
+    else:
+        risk = "低风险" if lang == "中文" else "Low Risk"
+
+    return score, risk
+
+def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
+    # 1. Generate summary text (see bert_enhancement.py for localization)
+    summary = generate_summary_text(symptoms, history, lab_params, lang)
+
+# 2. Process uploaded file if provided
+    file_data = None
+    file_mapping = None
+    file_section = None
     if file_output:
         file_data = process_file(file_output, lang)
         if isinstance(file_data, str):
@@ -249,100 +307,72 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
             except json.JSONDecodeError:
                 return f"Error processing file: {file_data}"
     if file_data:
-        if lang == "中文":
-            file_section = "### 上传文件内容解析"
-        else:
-            file_section = "### File Content Analysis"
+        file_section = "### 上传文件内容解析" if lang == "中文" else "### File Content Analysis"
         file_mapping = map_uploaded_file(file_data)
         print(f"File mapping: {file_mapping}")
 
-    print(f"Processing symptoms: {symptoms}")
-    print(f"Processing history: {history}")
-    print(f"Processing lab parameters: {lab_params}")
+        # Merge overlapping lab parameters (prefer user input if exists)
+        for k, v in file_mapping.items():
+            if k not in lab_params or not lab_params[k]:
+                lab_params[k] = v
 
-    # TODO: If file_mapping exist, compare file_mapping with lab_params and use lab_params if overlapping values exist
-
-    # Combine structured inputs into a single text representation
-    structured_text = (
-        f"{section_user}:\n\n"
-        f"{section_symptoms}:\n" +
-        "\n".join([f"{bullet} {q}: {a}" for q, a in symptoms.items()]) +
-        f"\n\n{section_history}:\n" +
-        "\n".join([f"{bullet} {q}: {a}" for q, a in history.items()]) +
-        f"\n\n{section_lab}:\n" +
-        "\n".join([f"{bullet} {q}: {a}" for q, a in lab_params.items()])
-    )
-
-    if file_mapping:
-        structured_text += f"\n{file_section}:\n{dict(file_mapping)}" 
-
-    print(f"Structured text for analysis: {structured_text}")
-    # Classify cardiovascular diseases and get recommendations
+    # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
+    
+    # 2. Model predictions (weighted aggregation)
+    model_weights = {"BioBERT": 0.3, "ClinicalBERT": 0.3, "PubMedBERT": 0.4}
+    risk_labels = ["低风险", "中风险", "高风险"] if lang == "中文" else ["Low Risk", "Moderate Risk", "High Risk"]
+    risk_scores = {label: 0 for label in risk_labels}
+    outputs = {}
+    for model_name, clf in pipelines.items():
+        predictions = clf(summary)
+        result = {LABEL_MAPPING[p['label']][lang]: p['score'] for p in predictions if p['label'] in LABEL_MAPPING}
+        sorted_result = sorted(result.items(), key=lambda x: x[1], reverse=True)
+        outputs[model_name] = (sorted_result, result)
+        for label, score in result.items():
+            if model_name in model_weights and label in risk_scores:
+                risk_scores[label] += score * model_weights[model_name]
 
-    # Get predictions from all models
-    model_results = []
-    for model_name, classifier in pipelines.items():
-        try:
-            predictions = classifier(structured_text)
-            print(predictions)
-            probabilities = {
-                LABEL_MAPPING[pred["label"]][lang]: pred["score"] for pred in predictions}
-            most_likely = max(probabilities, key=probabilities.get)
-            explanation = MODEL_EXPLANATIONS[model_name][lang]
-            model_results.append({
-                "model_name": model_name,
-                "most_likely": most_likely,
-                "probabilities": probabilities,
-                "explanation": explanation
-            })
-        except Exception as e:
-            model_results.append({
-                "model_name": model_name,
-                "error": str(e)
-            })
+    ai_risk = max(risk_scores, key=risk_scores.get)
 
-    # Aggregate predictions
-    aggregated_risk, aggregated_probabilities = aggregate_model_predictions(
-        model_results, lang)
+    # 3. HEART score
+    heart_score, heart_risk = calculate_heart_score(symptoms, history, lab_params, lang)
 
-    # Format the results for display
-    formatted_results = [structured_text]
-    formatted_results.append(
-        f"{section_disease}:\n" +
-        "\n".join([f"{bullet} {disease}" for disease in diseases])
-    )
-    formatted_results.append(
-        f"{section_recommend}:\n" +
-        "\n".join(
-            [f"{bullet} {recommendation}" for recommendation in recommendations])
-    )
+    # 4. Final risk level
+    final_risk = heart_risk if heart_score >= 4 else ai_risk
 
-    # Add model-specific results
-    formatted_results.append(f"{section_model}:")
-    for result in model_results:
-        if "error" in result:
-            formatted_results.append(f"- **{result['model_name']}**: Error: {result['error']}")
-        else:
-            formatted_results.append(
-                f"- **{result['model_name']}**:\n"
-                f"  **{risk_label}:** {result['most_likely']}\n"
-                f"  **{prob_label}:**\n" +
-                "\n".join([f"    {bullet} {risk}: {score:.2f}" for risk, score in result["probabilities"].items()]) +
-                f"\n  **{explain_label}:** {result['explanation']}\n"
-            )
+    # 5. Clinical alerts
+    alerts = generate_clinical_alerts(symptoms, history, lab_params, lang)
 
-    # Add aggregated analysis
-    formatted_results.append(
-        f"{section_agg}:\n"
-        f"- **{agg_risk}:** {aggregated_risk}\n"
-        f"- **{agg_prob}:**\n" +
-        "\n".join([f"  {bullet} {risk}: {score:.2f}" for risk, score in aggregated_probabilities.items()]) +
-        f"\n- **{('说明' if lang == '中文' else 'Explanation')}:** {agg_explain}"
-    )
+    # 6. Recommendations
+    recommendations = generate_recommendations(final_risk, heart_score, lang)
 
-    return "\n\n".join(formatted_results)
+    # 7. Output formatting
+    output = f"## 🩺 综合风险等级\n🔹 **{final_risk}**\n\n"
+    if alerts:
+        output += "## 🚨 临床警报\n" if lang == "中文" else "## 🚨 Clinical Alerts\n"
+        for alert in alerts:
+            output += f"- {alert}\n"
+        output += "\n"
+    output += "## 📊 模型概率分布\n" if lang == "中文" else "## 📊 Model Probability Distribution\n"
+    for model_name in outputs:
+        output += f"### 🔸 {model_name}\n"
+        for label, score in outputs[model_name][0]:
+            output += f"- {label}: {score:.2f}\n"
+    output += f"\n## ❤️ HEART评分: {heart_score}分 ({heart_risk})\n" if lang == "中文" else f"\n## ❤️ HEART Score: {heart_score} points ({heart_risk})\n"
+    output += "## ⚖️ 加权风险分数\n" if lang == "中文" else "## ⚖️ Weighted Risk Scores\n"
+    for risk, score in risk_scores.items():
+        output += f"- {risk}: {score:.3f}\n"
+    output += "\n## 🩺 临床建议\n" if lang == "中文" else "\n## 🩺 Clinical Recommendations\n"
+    for rec in recommendations:
+        output += f"- {rec}\n"
+    output += f"\n## 💬 模型说明\n" if lang == "中文" else f"\n## 💬 Model Explanation\n"
+    for model_name in outputs:
+        output += f"### {model_name}\n"
+        output += f"{MODEL_EXPLANATIONS.get(model_name, {}).get(lang, '暂无说明' if lang == '中文' else 'No description available')}\n\n"
+    output += f"\n## 📝 输入摘要\n{summary}\n" if lang == "中文" else f"\n## 📝 Input Summary\n{summary}\n"
+    return output
 
 # Create Gradio interface for each language
 def make_tab(lang):

@@ -356,9 +356,9 @@ def make_tab(lang):
             ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
             ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
             ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
-             "中文" else "LDL-C (mg/dL)", 50, 200, 100),
+             "中文" else "LDL Cholesterol (mg/dL)", 50, 200, 100),
             ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
-             "中文" else "HDL-C (mg/dL)", 20, 100, 50),
+             "中文" else "HDL Cholesterol (mg/dL)", 20, 100, 50),
             ("总胆固酯 (mg/dL)" if lang ==
              "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
             ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
@@ -457,18 +457,41 @@ def process_file(file, lang="English", mock=True):
     """
     # TODO: Implement English mock data and return based on Lang
     if mock:
-        mock_data = {
-            "癌胚抗原 (CEA)": "3.22 ng/ml (≤5)",
-            "甲胎蛋白": "3.52 ng/ml (≤7)",
-            "高密度脂蛋白胆固醇": "78.15 mg/dL (>40)",
-            "低密度脂蛋白胆固醇": "171.4 mg/dL (<130) ↑",
-            "甘油三酯": "110.7 mg/dL (<150)",
-            "总胆固酯": "266.5 mg/dL (<200) ↑",
-            "尿素": "37.64 mg/dL (18.63–52.85)",
-            "总二氧化碳": "26.8 mEq/L (22.0–29.0)",
-            "尿酸": "3.97 mg/dL (2.61–6.00)",
-            "肌酐": "0.71 mg/dL (0.46–0.92)"
-        }
+        if lang == "中文":
+            mock_data = {
+                "癌胚抗原 (CEA)": "3.22 ng/ml (≤5)",
+                "甲胎蛋白": "3.52 ng/ml (≤7)",
+                "高密度脂蛋白胆固醇": "78.15 mg/dL (>40)",
+                "低密度脂蛋白胆固醇": "171.4 mg/dL (<130) ↑",
+                "甘油三酯": "110.7 mg/dL (<150)",
+                "总胆固醇": "266.5 mg/dL (<200) ↑",
+                "尿素": "37.64 mg/dL (18.63–52.85)",
+                "总二氧化碳": "26.8 mEq/L (22.0–29.0)",
+                "尿酸": "3.97 mg/dL (2.61–6.00)",
+                "肌酐": "0.71 mg/dL (0.46–0.92)"
+            }
+        else:
+            mock_data = {
+                "LDL Cholesterol": "84 mg/dL (Ref: < 135 mg/dL)",
+                "Total Cholesterol": "185 mg/dL (Ref: < 200 mg/dL)",
+                "HDL Cholesterol": "76 mg/dL (Ref: ≥ 40 mg/dL)",
+                "Non-HDL Cholesterol": "109 mg/dL (Ref: < 162 mg/dL)",
+                "Triglycerides": "144 mg/dL (Ref: < 150 mg/dL)",
+                "A1c": "5.4% (Ref: < 6.0%)",
+                "eGFR": "72 mL/min/1.73m² (Ref: ≥ 60)",
+                "Urea (BUN equivalent)": "23 mg/dL (Ref: ~7 – 23 mg/dL)",
+                "Iron": "67 µg/dL (Ref: 40 – 160 µg/dL)",
+                "Vitamin B12": "149 pg/mL (Ref: 148–220: Insufficiency)",
+                "PSA (Prostate Specific Antigen)": "1.68 ng/mL (Ref: < 3.5 ng/mL)",
+                "DHEAS": "148 µg/dL (Ref: ~69 – 305 µg/dL)",
+                "WBC Count": "4.1 x10⁹/L (Ref: 4.5 – 11.0 x10⁹/L)",
+                "RBC Count": "4.9 x10¹²/L (Ref: 4.4 – 5.9 x10¹²/L)",
+                "Hemoglobin": "15.2 g/dL (Ref: 14.0 – 18.0 g/dL)",
+                "Lymphocytes": "0.8 x10⁹/L (Ref: 1.0 – 3.3 x10⁹/L)",
+                "Ferritin": "473 ng/mL (Ref: > 220 ng/mL)",
+                "Platelets": "170 x10⁹/L (Ref: 140 – 440 x10⁹/L)"
+            }
+        
         return json.dumps(mock_data, indent=2, ensure_ascii=False)
     if file is None:
         return "No file uploaded."

@@ -288,14 +288,11 @@ def calculate_heart_score(symptoms, history, lab_params, lang):
 
     return score, risk
 
-def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
-    print(f"Processing symptoms: {symptoms}")
-    print(f"Processing history: {history}")
-    print(f"Processing lab parameters: {lab_params}")
-    # 1. Generate summary text (see bert_enhancement.py for localization)
-    summary = generate_summary_text(symptoms, history, lab_params, lang)
 
-# 2. Process uploaded file if provided
+def handle_file_output(file_output, lang):
+    """
+    处理上传文件，返回 file_data, file_mapping, file_section
+    """
     file_data = None
     file_mapping = None
     file_section = None
@@ -305,16 +302,35 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
             try:
                 file_data = json.loads(file_data)
             except json.JSONDecodeError:
-                return f"Error processing file: {file_data}"
+                return None, None, f"Error processing file: {file_data}"
     if file_data:
         file_section = "### 上传文件内容解析" if lang == "中文" else "### File Content Analysis"
         file_mapping = map_uploaded_file(file_data)
         print(f"File mapping: {file_mapping}")
+    return file_data, file_mapping, file_section
 
+
+def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
+    # 1. Process uploaded file if provided
+    file_data, file_mapping, file_section = handle_file_output(
+        file_output, lang)
+    if file_data:
         # Merge overlapping lab parameters (prefer user input if exists)
+        overlap_keys = []
         for k, v in file_mapping.items():
-            if k not in lab_params or not lab_params[k]:
+            if k in lab_params:
+                if lang == "中文":
+                    overlap_keys.append(
+                        f"文件覆盖实验室参数： {k}:{v} 替换  {lab_params[k]}")
+                else:
+                    overlap_keys.append(
+                        f"Overriding lab parameter {k}:{v} with original value {lab_params[k]}")
                 lab_params[k] = v
+    print(f"Processing symptoms: {symptoms}")
+    print(f"Processing history: {history}")
+    print(f"Processing lab parameters: {lab_params}")
+    # 2. Generate summary text (see bert_enhancement.py for localization)
+    summary = generate_summary_text(symptoms, history, lab_params, lang)
 
     # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
@@ -349,7 +365,7 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     recommendations = generate_recommendations(final_risk, heart_score, lang)
 
     # 7. Output formatting
-    output = f"## 🩺 综合风险等级\n🔹 **{final_risk}**\n\n"
+    output = f"## 🩺 综合风险等级\n🔹 **{final_risk}**\n\n" if lang == "中文" else f"## 🩺 Overall risk\n🔹 **{final_risk}**\n\n"
     if alerts:
         output += "## 🚨 临床警报\n" if lang == "中文" else "## 🚨 Clinical Alerts\n"
         for alert in alerts:
@@ -372,6 +388,11 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         output += f"### {model_name}\n"
         output += f"{MODEL_EXPLANATIONS.get(model_name, {}).get(lang, '暂无说明' if lang == '中文' else 'No description available')}\n\n"
     output += f"\n## 📝 输入摘要\n{summary}\n" if lang == "中文" else f"\n## 📝 Input Summary\n{summary}\n"
+    if file_data:
+        output += f"{file_section}"
+        output += f"\n{json.dumps(file_data, indent=2, ensure_ascii=False)}\n\n"
+    if overlap_keys:
+        output += "\n".join(overlap_keys)
     return output
 
 # Create Gradio interface for each language
@@ -389,7 +410,7 @@ def make_tab(lang):
              "中文" else "LDL Cholesterol (mg/dL)", 50, 200, 100),
             ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
              "中文" else "HDL Cholesterol (mg/dL)", 20, 100, 50),
-            ("总胆固酯 (mg/dL)" if lang ==
+            ("总胆固醇 (mg/dL)" if lang ==
              "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
             ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
              "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
@@ -471,8 +492,15 @@ def make_tab(lang):
         outputs=[output_text]
     )
 
+    default_values = (
+        [None] * len(symptom_fields) +
+        [None] * len(history_fields) +
+        [val for q, minv, maxv, val in L["nums"]] +
+        [None]  # file_input
+    )
+
     reset_button.click(
-        fn=lambda: [None] * len(fields),  # 清空所有输入
+        fn=lambda: default_values,
         inputs=None,
         outputs=fields
     )

@@ -291,7 +291,7 @@ def calculate_heart_score(symptoms, history, lab_params, lang):
 
 def handle_file_output(file_output, lang):
     """
-    处理上传文件，返回 file_data, file_mapping, file_section
+    Process uploaded files，return file_data, file_mapping, file_section
     """
     file_data = None
     file_mapping = None
@@ -315,7 +315,7 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     file_data, file_mapping, file_section = handle_file_output(
         file_output, lang)
     if file_data:
-        # Merge overlapping lab parameters (prefer user input if exists)
+        # Merge overlapping lab parameters
         overlap_keys = []
         for k, v in file_mapping.items():
             if k in lab_params:
@@ -329,14 +329,14 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     print(f"Processing symptoms: {symptoms}")
     print(f"Processing history: {history}")
     print(f"Processing lab parameters: {lab_params}")
-    # 2. Generate summary text (see bert_enhancement.py for localization)
+    # 2. Generate summary text
     summary = generate_summary_text(symptoms, history, lab_params, lang)
 
     # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
     
-    # 2. Model predictions (weighted aggregation)
+    # 4. Model predictions (weighted aggregation)
     model_weights = {"BioBERT": 0.3, "ClinicalBERT": 0.3, "PubMedBERT": 0.4}
     risk_labels = ["低风险", "中风险", "高风险"] if lang == "中文" else ["Low Risk", "Moderate Risk", "High Risk"]
     risk_scores = {label: 0 for label in risk_labels}
@@ -352,19 +352,19 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
 
     ai_risk = max(risk_scores, key=risk_scores.get)
 
-    # 3. HEART score
+    # 5. HEART score
     heart_score, heart_risk = calculate_heart_score(symptoms, history, lab_params, lang)
 
-    # 4. Final risk level
+    # 6. Final risk level
     final_risk = heart_risk if heart_score >= 4 else ai_risk
 
-    # 5. Clinical alerts
+    # 7. Clinical alerts
     alerts = generate_clinical_alerts(symptoms, history, lab_params, lang)
 
-    # 6. Recommendations
+    # 8. Recommendations
     recommendations = generate_recommendations(final_risk, heart_score, lang)
 
-    # 7. Output formatting
+    # 9. Output formatting
     output = f"## 🩺 综合风险等级\n🔹 **{final_risk}**\n\n" if lang == "中文" else f"## 🩺 Overall risk\n🔹 **{final_risk}**\n\n"
     if alerts:
         output += "## 🚨 临床警报\n" if lang == "中文" else "## 🚨 Clinical Alerts\n"
@@ -513,7 +513,6 @@ def process_file(file, lang="English", mock=True):
     Process the uploaded docx file and use OpenAI API to extract key-value pairs.
     If mock is True, return a fixed JSON structure for testing.
     """
-    # TODO: Implement English mock data and return based on Lang
     if mock:
         if lang == "中文":
             mock_data = {

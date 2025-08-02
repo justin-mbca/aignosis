@@ -337,6 +337,30 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
+    
+    # Get predictions from all models
+    model_results = []
+    for model_name, classifier in pipelines.items():
+        try:
+            predictions = classifier(summary)
+            print(predictions)
+            probabilities = {
+                LABEL_MAPPING[pred["label"]][lang]: pred["score"] for pred in predictions}
+            most_likely = max(probabilities, key=probabilities.get)
+            explanation = MODEL_EXPLANATIONS[model_name][lang]
+            model_results.append({
+                "model_name": model_name,
+                "most_likely": most_likely,
+                "probabilities": probabilities,
+                "explanation": explanation
+            })
+        except Exception as e:
+            model_results.append({
+                "model_name": model_name,
+                "error": str(e)
+            })
+
+    print(f"Model results: {model_results}")
 
     
     # 4. Model predictions (weighted aggregation)
@@ -353,6 +377,7 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
             if model_name in model_weights and label in risk_scores:
                 risk_scores[label] += score * model_weights[model_name]
 
+    # print(f"Model outputs: {outputs}")
     ai_risk = max(risk_scores, key=risk_scores.get)
 
     # 5. HEART score
@@ -396,6 +421,11 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         output += f"\n{json.dumps(file_data, indent=2, ensure_ascii=False)}\n\n"
     if overlap_keys:
         output += "\n".join(overlap_keys)
+    
+    openai_result = summarize_model_outputs(model_results, lang, mock=True)
+    # openai_result = summarize_model_outputs(model_results, lang, mock=False)
+    output += "\n\n## 🤖 模型输出总结\n" if lang == "中文" else "\n\n## 🤖 Model Output Summary\n"
+    output += openai_result + "\n"
     return output
 
 # Create Gradio interface for each language

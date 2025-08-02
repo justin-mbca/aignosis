@@ -444,12 +444,12 @@ def make_tab(lang):
 
     with gr.Group():
         gr.Markdown("### 🩺 症状 / Symptoms" if lang == "中文" else "### 🩺 Symptoms")
-        symptom_fields = [gr.Radio(choices=yesno, label=q, value=None)
+        symptom_fields = [gr.Radio(choices=yesno, label=q,  value=L["no"])
                           for q in symptom_questions]
 
     with gr.Group():
         gr.Markdown("### 🏥 病史 / Medical History" if lang == "中文" else "### 🏥 Medical History")
-        history_fields = [gr.Radio(choices=yesno, label=q, value=None)
+        history_fields = [gr.Radio(choices=yesno, label=q, value=L["no"])
                           for q in history_questions]
 
     with gr.Group():
@@ -493,8 +493,8 @@ def make_tab(lang):
     )
 
     default_values = (
-        [None] * len(symptom_fields) +
-        [None] * len(history_fields) +
+        [L["no"]] * len(symptom_fields) +
+        [L["no"]] * len(history_fields) +
         [val for q, minv, maxv, val in L["nums"]] +
         [None]  # file_input
     )

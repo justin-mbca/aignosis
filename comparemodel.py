@@ -5,6 +5,8 @@ import docx
 import os
 from dotenv import load_dotenv
 from process_file import extract_key_value_pairs
+from process_health_docx import extract_medical_data
+from process_model_output import summarize_model_outputs_llm
 import json
 import re
 
@@ -335,6 +337,7 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
+
     
     # 4. Model predictions (weighted aggregation)
     model_weights = {"BioBERT": 0.3, "ClinicalBERT": 0.3, "PubMedBERT": 0.4}
@@ -396,6 +399,51 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     return output
 
 # Create Gradio interface for each language
+def summarize_model_outputs(model_outputs, language="中文", mock= False):
+    """
+    Summarizes model outputs and returns a formatted string.
+    Args:
+        model_outputs: list of dicts with model results
+
+    """
+    mock_chinese_text = """
+1. 根据三个模型的输出，BioBERT、PubMedBERT和ClinicalBERT都将该文本判断为高风险，概率分别为0.39、0.48和0.45。
+
+2. 三个模型之间的一致性较高，都将文本判断为高风险。虽然在风险概率上有些许差异，但差距并不大。
+
+3. 综合三个模型的判断，系统应该将该文本分类为“高风险”。
+
+4. 建议用户行动：鉴于三个模型都将文本判断为高风险，建议用户尽快就医，并向医生详细描述相关症状和病情。如果可能，准备相关的医疗记录和检查结果，以便医生更准确地评估风险。
+
+[English Translation]
+
+1. According to the outputs of the three models, BioBERT, PubMedBERT, and ClinicalBERT all classify the text as high risk, with probabilities of 0.39, 0.48, and 0.45 respectively.
+
+2. There is a high level of consistency between the three models, all classifying the text as high risk. Although there are slight differences in risk probabilities, the gap is not large.
+
+3. Combining the judgments of the three models, the system should classify this text as "high risk".
+
+4. Suggested User Action: Given that all three models classify the text as high risk, it is recommended that the user seek medical attention as soon as possible and provide the doctor with a detailed description of the symptoms and condition. If possible, prepare relevant medical records and test results to help the doctor more accurately assess the risk.
+    """
+    mock_english_text = """
+    1. According to the outputs of the three models, BioBERT, PubMedBERT, and ClinicalBERT all classify the text as high risk, with probabilities of 0.39, 0.48, and 0.45 respectively.
+
+2. There is a high level of consistency between the three models, all classifying the text as high risk. Although there are slight differences in risk probabilities, the gap is not large.
+
+3. Combining the judgments of the three models, the system should classify this text as "high risk".
+
+4. Suggested User Action: Given that all three models classify the text as high risk, it is recommended that the user seek medical attention as soon as possible and provide the doctor with a detailed description of the symptoms and condition. If possible, prepare relevant medical records and test results to help the doctor more accurately assess the risk.
+    """
+
+    if mock:
+        if language == "中文":
+            return mock_chinese_text
+        else:
+            return mock_english_text
+    else:
+        return summarize_model_outputs_llm(model_outputs, language)
+    
+
 def make_tab(lang):
     """
     Creates a tab for the specified language (Chinese or English).

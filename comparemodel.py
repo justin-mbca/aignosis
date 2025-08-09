@@ -316,9 +316,9 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     # 1. Process uploaded file if provided
     file_data, file_mapping, file_section = handle_file_output(
         file_output, lang)
+    overlap_keys = []
     if file_data:
         # Merge overlapping lab parameters
-        overlap_keys = []
         for k, v in file_mapping.items():
             if k in lab_params:
                 if lang == "中文":

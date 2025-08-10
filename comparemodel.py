@@ -397,14 +397,14 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     if overlap_keys:
         output += "\n".join(overlap_keys)
 
-    print(f"Final output:\n{output}")
+    # print(f"Final output:\n{output}")
     # call openai API to summarize the output
     if lang == "中文":
         output1 = summarize_model_outputs(model_outputs=output, language="中文", mock=True)
     else:
         output1 = summarize_model_outputs(model_outputs=output, language="English", mock=True)
 
-    print(f"open ai :\n{output1}")
+    # print(f"open ai :\n{output1}")
     if lang == "中文":
         output += f"\n## 📝 模型输出总结\n{output1}\n"
     else:

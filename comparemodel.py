@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 from process_file import extract_key_value_pairs
 from process_health_docx import extract_medical_data
-from process_model_output import summarize_model_outputs_llm
+from summary_result import summarize_model_outputs_llm
 import json
 import re
 
@@ -396,6 +396,19 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         output += f"\n{json.dumps(file_data, indent=2, ensure_ascii=False)}\n\n"
     if overlap_keys:
         output += "\n".join(overlap_keys)
+
+    print(f"Final output:\n{output}")
+    # call openai API to summarize the output
+    if lang == "中文":
+        output1 = summarize_model_outputs(model_outputs=output, language="中文", mock=True)
+    else:
+        output1 = summarize_model_outputs(model_outputs=output, language="English", mock=True)
+
+    print(f"open ai :\n{output1}")
+    if lang == "中文":
+        output += f"\n## 📝 模型输出总结\n{output1}\n"
+    else:
+        output += f"\n## 📝 Model Output Summary\n{output1}\n"
     return output
 
 # Create Gradio interface for each language
@@ -407,32 +420,33 @@ def summarize_model_outputs(model_outputs, language="中文", mock= False):
 
     """
     mock_chinese_text = """
-1. 根据三个模型的输出，BioBERT、PubMedBERT和ClinicalBERT都将该文本判断为高风险，概率分别为0.39、0.48和0.45。
+根据您提供的信息和模型分析，您的综合风险等级被评为高风险。这是由BioBERT、PubMedBERT和ClinicalBERT三个模型共同评估得出的结果，其中ClinicalBERT给出的高风险评估最高，达到0.67，而BioBERT和PubMedBERT的评估较低，分别为0.38和0.51。这可能是由于ClinicalBERT模型更侧重于临床数据的分析
+。
 
-2. 三个模型之间的一致性较高，都将文本判断为高风险。虽然在风险概率上有些许差异，但差距并不大。
+尽管您的HEART评分为1分，属于低风险，但综合模型的加权风险分数显示您的高风险评级为0.521，因此我们建议您高度重视。
 
-3. 综合三个模型的判断，系统应该将该文本分类为“高风险”。
+根据您的症状和病史，以及实验室参数的结果，我们强烈建议您立即就医。虽然您的胸痛并未在劳累时加重，也没有表现为压迫感或紧缩感，也没有放射至 
+肩/背/下巴，也没有在休息后缓解，也没有伴随呼吸困难、恶心或呕吐、头晕或晕厥、心悸等症状，但您的胸痛持续超过5分钟并伴有冷汗，这是需要引起高
+度警惕的症状。
 
-4. 建议用户行动：鉴于三个模型都将文本判断为高风险，建议用户尽快就医，并向医生详细描述相关症状和病情。如果可能，准备相关的医疗记录和检查结果，以便医生更准确地评估风险。
+此外，您的病史显示您患有糖尿病并且有吸烟的习惯，这都是心血管疾病的风险因素。您的实验室参数显示，您的低密度脂蛋白胆固醇和总胆固醇水平超标 
+，这也可能增加心血管疾病的风险。
 
-[English Translation]
-
-1. According to the outputs of the three models, BioBERT, PubMedBERT, and ClinicalBERT all classify the text as high risk, with probabilities of 0.39, 0.48, and 0.45 respectively.
-
-2. There is a high level of consistency between the three models, all classifying the text as high risk. Although there are slight differences in risk probabilities, the gap is not large.
-
-3. Combining the judgments of the three models, the system should classify this text as "high risk".
-
-4. Suggested User Action: Given that all three models classify the text as high risk, it is recommended that the user seek medical attention as soon as possible and provide the doctor with a detailed description of the symptoms and condition. If possible, prepare relevant medical records and test results to help the doctor more accurately assess the risk.
+因此，我们建议您立即就医，并向医生详细描述您的症状、病史和实验室参数结果，以便医生能够做出准确的诊断。
     """
+    
+
     mock_english_text = """
-    1. According to the outputs of the three models, BioBERT, PubMedBERT, and ClinicalBERT all classify the text as high risk, with probabilities of 0.39, 0.48, and 0.45 respectively.
+    Based on the analysis, the overall risk level for your health condition is high. This assessment is primarily derived from the evaluations of two models, PubMedBERT and ClinicalBERT, both of which have classified your condition as high risk. However, the BioBERT model suggests a moderate risk level. Despite this discrepancy, the weighted risk scores lean towards a high-risk classification.
 
-2. There is a high level of consistency between the three models, all classifying the text as high risk. Although there are slight differences in risk probabilities, the gap is not large.
+The HEART Score, a clinical tool used to evaluate the risk of major adverse cardiac events, classifies your condition as low risk. This score seems to contradict the high-risk assessment from the models. However, the HEART Score is based on a limited set of parameters and may not fully capture the complexity of your situation.
 
-3. Combining the judgments of the three models, the system should classify this text as "high risk".
+Given the high risk indicated by the models, it is strongly recommended that you seek immediate medical attention. This is not a situation where waiting and observing is advisable. The symptoms you have reported, particularly chest pain lasting more than 5 minutes and accompanied by cold sweat, are concerning and warrant immediate evaluation.
 
-4. Suggested User Action: Given that all three models classify the text as high risk, it is recommended that the user seek medical attention as soon as possible and provide the doctor with a detailed description of the symptoms and condition. If possible, prepare relevant medical records and test results to help the doctor more accurately assess the risk.
+When you visit the doctor, be prepared to provide a detailed account of your symptoms and medical history. This includes the fact that you are a smoker and have diabetes, both of which can contribute to cardiovascular risk. Also, share the lab parameters, especially the overridden values for LDL Cholesterol, Total Cholesterol, and HDL Cholesterol. These factors will help the healthcare professionals to make 
+a comprehensive assessment of your condition.
+
+Remember, this analysis is based on the information provided and models' predictions. It is intended to support, not replace, the relationship between a patient and his/her physician. Always consult with a healthcare professional for a definitive diagnosis and treatment
     """
 
     if mock:

@@ -17,7 +17,7 @@ This project is a bilingual (Chinese-English) AI-powered assistant for early car
 - **HEART Score Calculation**: Integrates a simplified HEART score for additional risk stratification.
 - **Free Text Analysis**: Extracts keywords, flags inconsistencies, and can supplement structured data for risk analysis.
 - **Explainable Output**: Structured, bilingual summaries with model explanations, clinical alerts, recommendations, and warnings.
-- **ChatGPT/LLM Integration (Planned)**: Placeholder for LLM-powered report summarization.
+- **ChatGPT/LLM Integration**: LLM-powered report summarization.
 
 ---
 
@@ -56,6 +56,25 @@ graph TD
 - **BioBERT**: Pre-trained on biomedical text, suitable for analyzing medical-related content.
 - **PubMedBERT**: Trained on PubMed data, focuses on understanding biomedical literature.
 - **ClinicalBERT**: Optimized for clinical text (e.g., electronic medical records), suitable for analyzing patient-related clinical data.
+
+---
+
+## About the Models
+
+- **BioBERT** ([paper](https://arxiv.org/abs/1901.08746), [Hugging Face](https://huggingface.co/dmis-lab/biobert-base-cased-v1.1))
+  - A domain-specific language representation model pre-trained on large-scale biomedical corpora (PubMed abstracts and PMC full-text articles).
+  - Especially effective for biomedical text mining tasks such as named entity recognition, relation extraction, and question answering.
+  - Used here for classifying cardiovascular risk from medical text.
+
+- **PubMedBERT** ([paper](https://arxiv.org/abs/2007.15779), [Hugging Face](https://huggingface.co/microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract))
+  - The first BERT model pre-trained from scratch on PubMed abstracts only, without general-domain data.
+  - Achieves state-of-the-art results on many biomedical NLP tasks, especially those requiring deep understanding of biomedical literature.
+  - Used here for risk classification based on structured and free-text medical input.
+
+- **ClinicalBERT** ([paper](https://arxiv.org/abs/1904.05342), [Hugging Face](https://huggingface.co/emilyalsentzer/Bio_ClinicalBERT))
+  - A BERT model further pre-trained on clinical notes from the MIMIC-III database, making it highly effective for clinical/EMR text.
+  - Excels at tasks involving patient records, clinical notes, and other healthcare documentation.
+  - Used here to analyze patient symptoms and history for cardiovascular risk.
 
 ---
 
@@ -120,7 +139,7 @@ flowchart TD
     - Free text can supplement or override structured data if higher risk is detected.
 4. **Aggregation**: Model outputs are aggregated (weighted), and final risk is determined (HEART score can override if high).
 5. **Output Generation**: Bilingual, explainable report is generated, including model explanations, clinical alerts, recommendations, and warnings.
-6. **LLM Summarization (Planned)**: Output can be summarized by a large language model for clarity and personalization.
+6. **LLM Summarization**: Output is summarized by a large language model for clarity and personalization.
 
 ---
 

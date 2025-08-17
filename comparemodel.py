@@ -516,15 +516,17 @@ def make_tab(lang):
         "yes": "是" if lang == "中文" else "Yes",
         "no": "否" if lang == "中文" else "No",
         "nums": [
-            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
-            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
-            ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
+            ("收缩压 (Systolic BP) (mmHg)" if lang ==
+             "中文" else "Systolic BP (mmHg)", 60, 220, 120),
+            ("舒张压 (Diastolic BP) (mmHg)" if lang ==
+             "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
+            ("低密度脂蛋白胆固醇 (LDL Cholesterol) (mg/dL)" if lang ==
              "中文" else "LDL Cholesterol (mg/dL)", 50, 200, 100),
-            ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
+            ("高密度脂蛋白胆固醇 (HDL Cholesterol) (mg/dL)" if lang ==
              "中文" else "HDL Cholesterol (mg/dL)", 20, 100, 50),
-            ("总胆固醇 (mg/dL)" if lang ==
+            ("总胆固醇 (Total Cholesterol) (mg/dL)" if lang ==
              "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
-            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
+            ("肌钙蛋白 (Troponin I/T) (ng/mL)" if lang ==
              "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
         ]
     }

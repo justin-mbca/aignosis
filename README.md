@@ -86,7 +86,7 @@ flowchart TD
     B --> C3(ClinicalBERT<br>ML Model)
     B --> D(Rule-based Logic<br>Explicit Clinical Rules)
     B --> E(HEART Score<br>Clinical Risk Score)
-    C1 --> F(Model Aggregation)
+    C1 --> F(Aggregation)
     C2 --> F
     C3 --> F
     D --> F

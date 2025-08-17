@@ -33,6 +33,24 @@ This project is a bilingual (Chinese-English) AI-powered assistant for early car
 
 ---
 
+## Technologies Used Diagram
+
+```mermaid
+graph TD
+    A(Project) --> B(Python 3.9+)
+    A --> C(Gradio)
+    A --> D(Hugging Face Transformers)
+    D --> D1(BioBERT)
+    D --> D2(PubMedBERT)
+    D --> D3(ClinicalBERT)
+    A --> E(OpenAI API)
+    A --> F(python-docx)
+    A --> G(Custom Rule-based Logic)
+    A --> H(JSON, Regex, Standard Libraries)
+```
+
+---
+
 ## Model Explanations
 
 - **BioBERT**: Pre-trained on biomedical text, suitable for analyzing medical-related content.

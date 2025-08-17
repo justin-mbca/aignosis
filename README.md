@@ -26,8 +26,7 @@ This project is a bilingual (Chinese-English) AI-powered assistant for early car
 - Python 3.9+
 - Gradio (web UI)
 - Hugging Face Transformers (BioBERT, PubMedBERT, ClinicalBERT)
-- OpenAI API (for LLM summarization, optional)
-- Docx parsing (python-docx)
+- OpenAI API (for LLM summarization)
 - Custom rule-based logic
 - JSON, Regex, and standard Python libraries
 
@@ -44,7 +43,6 @@ graph TD
     D --> D2(PubMedBERT)
     D --> D3(ClinicalBERT)
     A --> E(OpenAI API)
-    A --> F(python-docx)
     A --> G(Custom Rule-based Logic)
     A --> H(JSON, Regex, Standard Libraries)
 ```
@@ -79,25 +77,6 @@ graph TD
 ---
 
 ## Workflow Diagram
-
-```mermaid
-flowchart TD
-    A(User Input: Structured + Free Text + File Upload) --> B(Preprocessing)
-    B --> C1(BioBERT)
-    B --> C2(PubMedBERT)
-    B --> C3(ClinicalBERT)
-    B --> D(Rule-based Logic)
-    B --> E(HEART Score)
-    C1 --> F(Model Aggregation)
-    C2 --> F
-    C3 --> F
-    D --> F
-    E --> F
-    F --> G(Explainable, Bilingual Output)
-    G --> H(User)
-```
-
-## Workflow Diagram (with Explanatory Notes)
 
 ```mermaid
 flowchart TD

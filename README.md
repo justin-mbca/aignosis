@@ -83,11 +83,11 @@ flowchart TD
 ```mermaid
 flowchart TD
     A(User Input: Structured + Free Text + File Upload) --> B(Preprocessing)
-    B --> C1(BioBERT\nML Model)
-    B --> C2(PubMedBERT\nML Model)
-    B --> C3(ClinicalBERT\nML Model)
-    B --> D(Rule-based Logic\n(Explicit Clinical Rules))
-    B --> E(HEART Score\n(Clinical Risk Score))
+    B --> C1(BioBERT<br>ML Model)
+    B --> C2(PubMedBERT<br>ML Model)
+    B --> C3(ClinicalBERT<br>ML Model)
+    B --> D(Rule-based Logic<br>Explicit Clinical Rules)
+    B --> E(HEART Score<br>Clinical Risk Score)
     C1 --> F(Model Aggregation)
     C2 --> F
     C3 --> F
@@ -95,13 +95,12 @@ flowchart TD
     E --> F
     F --> G(Explainable, Bilingual Output)
     G --> H(User)
-
-    subgraph Legend
-      L1["ML Model: Machine learning model for risk prediction"]
-      L2["Rule-based Logic: Explicit clinical rules for safety"]
-      L3["HEART Score: Standard clinical risk score"]
-    end
 ```
+
+**Legend:**
+- **ML Model:** Machine learning model for risk prediction (BioBERT, PubMedBERT, ClinicalBERT)
+- **Rule-based Logic:** Explicit clinical rules for safety
+- **HEART Score:** Standard clinical risk score
 
 **Diagram Notes:**
 - **ML Model**: Each of BioBERT, PubMedBERT, ClinicalBERT independently predicts risk.

@@ -45,19 +45,19 @@ This project is a bilingual (Chinese-English) AI-powered assistant for early car
 
 ```mermaid
 flowchart TD
-    A[User Input (Structured + Free Text + File Upload)] --> B[Preprocessing]
-    B --> C1[BioBERT]
-    B --> C2[PubMedBERT]
-    B --> C3[ClinicalBERT]
-    B --> D[Rule-based Logic]
-    B --> E[HEART Score]
-    C1 --> F[Model Aggregation]
+    A(User Input: Structured + Free Text + File Upload) --> B(Preprocessing)
+    B --> C1(BioBERT)
+    B --> C2(PubMedBERT)
+    B --> C3(ClinicalBERT)
+    B --> D(Rule-based Logic)
+    B --> E(HEART Score)
+    C1 --> F(Model Aggregation)
     C2 --> F
     C3 --> F
     D --> F
     E --> F
-    F --> G[Explainable, Bilingual Output]
-    G --> H[User]
+    F --> G(Explainable, Bilingual Output)
+    G --> H(User)
 ```
 
 ---

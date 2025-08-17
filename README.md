@@ -78,6 +78,37 @@ flowchart TD
     G --> H(User)
 ```
 
+## Workflow Diagram (with Explanatory Notes)
+
+```mermaid
+flowchart TD
+    A(User Input: Structured + Free Text + File Upload) --> B(Preprocessing)
+    B --> C1(BioBERT\nML Model)
+    B --> C2(PubMedBERT\nML Model)
+    B --> C3(ClinicalBERT\nML Model)
+    B --> D(Rule-based Logic\n(Explicit Clinical Rules))
+    B --> E(HEART Score\n(Clinical Risk Score))
+    C1 --> F(Model Aggregation)
+    C2 --> F
+    C3 --> F
+    D --> F
+    E --> F
+    F --> G(Explainable, Bilingual Output)
+    G --> H(User)
+
+    subgraph Legend
+      L1["ML Model: Machine learning model for risk prediction"]
+      L2["Rule-based Logic: Explicit clinical rules for safety"]
+      L3["HEART Score: Standard clinical risk score"]
+    end
+```
+
+**Diagram Notes:**
+- **ML Model**: Each of BioBERT, PubMedBERT, ClinicalBERT independently predicts risk.
+- **Rule-based Logic**: Applies explicit clinical rules (e.g., emergency BP thresholds).
+- **HEART Score**: Standardized clinical scoring for chest pain risk.
+- All three approaches run in parallel and are aggregated for a robust, explainable, and safe final risk assessment.
+
 ---
 
 ## System Workflow
@@ -155,3 +186,16 @@ ClinicalBERT is optimized for clinical text (such as electronic medical records)
 ## License
 
 MIT
+
+## LLM Summarization
+
+The system supports live LLM (Large Language Model) summarization for generating concise, user-friendly reports. When enabled, model outputs are sent to an LLM (such as OpenAI's GPT-4) via API for real-time summary generation. This replaces the previous mock summary and provides more accurate, context-aware explanations.
+
+- **How it works:**
+    - The function `summarize_model_outputs` now calls a real LLM API instead of returning a mock summary.
+    - Requires a valid API key and internet connection.
+    - Summaries are generated dynamically based on the user's input and model results.
+
+- **Configuration:**
+    - Set up your API key in the environment or configuration file as described in the code comments.
+    - Ensure the `mock` parameter is set to `False` to enable live summarization.

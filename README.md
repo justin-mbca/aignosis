@@ -81,9 +81,9 @@ graph TD
 ```mermaid
 flowchart TD
     A(User Input: Structured + Free Text + File Upload) --> B(Preprocessing)
-    B --> C1(BioBERT<br>ML Model)
-    B --> C2(PubMedBERT<br>ML Model)
-    B --> C3(ClinicalBERT<br>ML Model)
+    B --> C1(BioBERT<br>AI Model)
+    B --> C2(PubMedBERT<br>AI Model)
+    B --> C3(ClinicalBERT<br>AI Model)
     B --> D(Rule-based Logic<br>Explicit Clinical Rules)
     B --> E(HEART Score<br>Clinical Risk Score)
     C1 --> F(Aggregation)
@@ -96,12 +96,12 @@ flowchart TD
 ```
 
 **Legend:**
-- **ML Model:** Machine learning model for risk prediction (BioBERT, PubMedBERT, ClinicalBERT)
+- **AI Model:** For risk prediction (BioBERT, PubMedBERT, ClinicalBERT)
 - **Rule-based Logic:** Explicit clinical rules for safety
 - **HEART Score:** Standard clinical risk score
 
 **Diagram Notes:**
-- **ML Model**: Each of BioBERT, PubMedBERT, ClinicalBERT independently predicts risk.
+- **AI Model**: Each of BioBERT, PubMedBERT, ClinicalBERT independently predicts risk.
 - **Rule-based Logic**: Applies explicit clinical rules (e.g., emergency BP thresholds).
 - **HEART Score**: Standardized clinical scoring for chest pain risk.
 - All three approaches run in parallel and are aggregated for a robust, explainable, and safe final risk assessment.

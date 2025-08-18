@@ -313,6 +313,10 @@ def handle_file_output(file_output, lang):
 
 
 def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
+    # Accept extra_text as a new argument
+    extra_text = None
+    if isinstance(symptoms, dict) and "__extra_text__" in symptoms:
+        extra_text = symptoms.pop("__extra_text__")
     # 1. Process uploaded file if provided
     file_data, file_mapping, file_section = handle_file_output(
         file_output, lang)
@@ -334,11 +338,51 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
     # 2. Generate summary text
     summary = generate_summary_text(symptoms, history, lab_params, lang)
 
+    # --- Analyze extra free text ---
+    extra_analysis = ""
+    mismatch_warnings = []
+    if extra_text and isinstance(extra_text, str) and extra_text.strip():
+        # Simple keyword extraction (example)
+        keywords = []
+        # Example: look for some common concerning words
+        keyword_list = [
+            "pain", "chest", "dizzy", "sweat", "palpitation", "nausea", "vomit", "shortness", "pressure", "anxiety",
+            "疼", "胸", "晕", "出汗", "心悸", "恶心", "呕吐", "呼吸", "压力", "焦虑"
+        ]
+        for word in keyword_list:
+            if word in extra_text.lower():
+                keywords.append(word)
+        # --- Mismatch detection for critical symptoms ---
+        # Define mapping of structured field to keyword(s)
+        critical_map = [
+            {"field": "是否伴冷汗？", "keyword": "冷汗", "yes": "是", "lang": "中文"},
+            {"field": "Is it accompanied by cold sweat?", "keyword": "cold sweat", "yes": "Yes", "lang": "English"},
+            {"field": "是否呼吸困难？", "keyword": "呼吸", "yes": "是", "lang": "中文"},
+            {"field": "Is there shortness of breath?", "keyword": "shortness", "yes": "Yes", "lang": "English"},
+            {"field": "是否头晕或晕厥？", "keyword": "晕", "yes": "是", "lang": "中文"},
+            {"field": "Is there dizziness or fainting?", "keyword": "dizzy", "yes": "Yes", "lang": "English"},
+            {"field": "是否心悸？", "keyword": "心悸", "yes": "是", "lang": "中文"},
+            {"field": "Is there palpitations?", "keyword": "palpitation", "yes": "Yes", "lang": "English"},
+        ]
+        for item in critical_map:
+            if item["lang"] == lang:
+                field_val = symptoms.get(item["field"])
+                if field_val is not None:
+                    # If structured says No, but keyword is in free text, warn
+                    if field_val != item["yes"] and item["keyword"] in extra_text:
+                        if lang == "中文":
+                            mismatch_warnings.append(f"⚠️ 结构化输入“{item['field']}”为“否”，但自由文本提及“{item['keyword']}”。请注意信息不一致！")
+                        else:
+                            mismatch_warnings.append(f"⚠️ Structured input '{item['field']}' is 'No', but free text mentions '{item['keyword']}'. Please note the inconsistency!")
+        if lang == "中文":
+            extra_analysis = f"\n## 📝 其他症状/关注点分析\n输入内容: {extra_text}\n关键词: {', '.join(keywords) if keywords else '无明显关键词'}\n"
+        else:
+            extra_analysis = f"\n## 📝 Extra Symptoms/Concerns Analysis\nInput: {extra_text}\nKeywords: {', '.join(keywords) if keywords else 'No significant keywords found'}\n"
+
     # 3. Classify cardiovascular diseases and get recommendations
     diseases, recommendations = classify_cardiovascular_disease(
         symptoms, history, lab_params, lang)
 
-    
     # 4. Model predictions (weighted aggregation)
     model_weights = {"BioBERT": 0.3, "ClinicalBERT": 0.3, "PubMedBERT": 0.4}
     risk_labels = ["低风险", "中风险", "高风险"] if lang == "中文" else ["Low Risk", "Moderate Risk", "High Risk"]
@@ -391,6 +435,12 @@ def analyze_structured_inputs(symptoms, history, lab_params, file_output, lang):
         output += f"### {model_name}\n"
         output += f"{MODEL_EXPLANATIONS.get(model_name, {}).get(lang, '暂无说明' if lang == '中文' else 'No description available')}\n\n"
     output += f"\n## 📝 输入摘要\n{summary}\n" if lang == "中文" else f"\n## 📝 Input Summary\n{summary}\n"
+    if extra_analysis:
+        output += extra_analysis
+    if mismatch_warnings:
+        output += ("\n## ⚠️ 信息不一致警告\n" if lang == "中文" else "\n## ⚠️ Inconsistency Warning\n")
+        for warn in mismatch_warnings:
+            output += f"- {warn}\n"
     if file_data:
         output += f"{file_section}"
         output += f"\n{json.dumps(file_data, indent=2, ensure_ascii=False)}\n\n"
@@ -466,15 +516,17 @@ def make_tab(lang):
         "yes": "是" if lang == "中文" else "Yes",
         "no": "否" if lang == "中文" else "No",
         "nums": [
-            ("收缩压 (mmHg)" if lang == "中文" else "Systolic BP (mmHg)", 60, 220, 120),
-            ("舒张压 (mmHg)" if lang == "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
-            ("低密度脂蛋白胆固醇 (mg/dL)" if lang ==
+            ("收缩压 (Systolic BP) (mmHg)" if lang ==
+             "中文" else "Systolic BP (mmHg)", 60, 220, 120),
+            ("舒张压 (Diastolic BP) (mmHg)" if lang ==
+             "中文" else "Diastolic BP (mmHg)", 40, 120, 80),
+            ("低密度脂蛋白胆固醇 (LDL Cholesterol) (mg/dL)" if lang ==
              "中文" else "LDL Cholesterol (mg/dL)", 50, 200, 100),
-            ("高密度脂蛋白胆固醇 (mg/dL)" if lang ==
+            ("高密度脂蛋白胆固醇 (HDL Cholesterol) (mg/dL)" if lang ==
              "中文" else "HDL Cholesterol (mg/dL)", 20, 100, 50),
-            ("总胆固醇 (mg/dL)" if lang ==
+            ("总胆固醇 (Total Cholesterol) (mg/dL)" if lang ==
              "中文" else "Total Cholesterol (mg/dL)", 0, 300, 200),
-            ("肌钙蛋白 (Troponin I/T, ng/mL)" if lang ==
+            ("肌钙蛋白 (Troponin I/T) (ng/mL)" if lang ==
              "中文" else "Troponin I/T (ng/mL)", 0, 50, 0.01)
         ]
     }
@@ -509,6 +561,11 @@ def make_tab(lang):
         symptom_fields = [gr.Radio(choices=yesno, label=q,  value=L["no"])
                           for q in symptom_questions]
 
+    # Add free text box for extra symptoms/concerns
+    with gr.Group():
+        extra_label = "其他症状或关注点 (可选)" if lang == "中文" else "Extra symptoms or concerns (optional)"
+        extra_textbox = gr.Textbox(label=extra_label, lines=2, placeholder=extra_label)
+
     with gr.Group():
         gr.Markdown("### 🏥 病史 / Medical History" if lang == "中文" else "### 🏥 Medical History")
         history_fields = [gr.Radio(choices=yesno, label=q, value=L["no"])
@@ -521,7 +578,6 @@ def make_tab(lang):
             for q, minv, maxv, val in L["nums"]
         ]
 
-
     with gr.Group():
         label = "上传文件" if lang == "中文" else "Upload File"
         gr.Markdown(label)
@@ -529,7 +585,7 @@ def make_tab(lang):
                              ".txt", ".pdf", ".docx"], elem_id="file_upload")
 
     # Combine all fields
-    fields = symptom_fields + history_fields + lab_fields + [file_input]
+    fields = symptom_fields + [extra_textbox] + history_fields + lab_fields + [file_input]
 
     # Output and submit button
     output_text = gr.Textbox(label="结果 / Results" if lang == "中文" else "Results")
@@ -537,25 +593,39 @@ def make_tab(lang):
     submit_button = gr.Button("提交 / Submit" if lang == "中文" else "Submit")
 
     # Submit button functionality
-    submit_button.click(
-        fn=lambda *inputs: analyze_structured_inputs(
-            symptoms={q: inputs[i] for i, q in enumerate(symptom_questions)},
-            history={q: inputs[i + len(symptom_questions)] for i, q in enumerate(history_questions)},
-            lab_params={
-                lab_fields[i].label: inputs[i +
-                                            len(symptom_questions) + len(history_questions)]
-                for i in range(len(lab_fields))
-                if inputs[i + len(symptom_questions) + len(history_questions)] not in (None, 0)
-            },
-            file_output=inputs[-1],
+    def submit_fn(*inputs):
+        # Unpack inputs
+        n_symptoms = len(symptom_fields)
+        n_history = len(history_fields)
+        n_lab = len(lab_fields)
+        symptoms_dict = {q: inputs[i] for i, q in enumerate(symptom_questions)}
+        extra_text = inputs[n_symptoms]
+        # Insert extra_text into symptoms dict with a special key
+        symptoms_dict["__extra_text__"] = extra_text
+        history_dict = {q: inputs[i + n_symptoms + 1] for i, q in enumerate(history_questions)}
+        lab_dict = {
+            lab_fields[i].label: inputs[i + n_symptoms + 1 + n_history]
+            for i in range(n_lab)
+            if inputs[i + n_symptoms + 1 + n_history] not in (None, 0)
+        }
+        file_val = inputs[-1]
+        return analyze_structured_inputs(
+            symptoms=symptoms_dict,
+            history=history_dict,
+            lab_params=lab_dict,
+            file_output=file_val,
             lang=lang
-        ),
+        )
+
+    submit_button.click(
+        fn=submit_fn,
         inputs=fields,
         outputs=[output_text]
     )
 
     default_values = (
         [L["no"]] * len(symptom_fields) +
+        [""] +
         [L["no"]] * len(history_fields) +
         [val for q, minv, maxv, val in L["nums"]] +
         [None]  # file_input
